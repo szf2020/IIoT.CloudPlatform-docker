@@ -1,9 +1,11 @@
-﻿using Microsoft.AspNetCore.Identity;
+﻿using IIoT.Application.Contracts;
+using IIoT.Infrastructure.EntityFrameworkCore.Identity; // 引入 ApplicationUser
+using IIoT.Infrastructure.EntityFrameworkCore.Repository;
+using IIoT.Services.Common.Contracts;
+using IIoT.SharedKernel.Repository;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using IIoT.SharedKernel.Repository;
-using IIoT.Infrastructure.EntityFrameworkCore.Repository;
-using IIoT.Application.Contracts;
 
 namespace IIoT.Infrastructure.EntityFrameworkCore;
 
@@ -11,23 +13,20 @@ public static class DependencyInjection
 {
     public static void AddEfCore(this IHostApplicationBuilder builder)
     {
-        // 🌟 完美保留 Aspire 注入方式，连接字符串名称改为适合工业项目的 "iiot-db"
         builder.AddNpgsqlDbContext<IIoTDbContext>("iiot-db");
 
-        // 完美保留泛型仓储的生命周期注册
         builder.Services.AddScoped(typeof(IReadRepository<>), typeof(EfReadRepository<>));
         builder.Services.AddScoped(typeof(IRepository<>), typeof(EfRepository<>));
-
-        // 完美保留只读查询服务的注册
         builder.Services.AddScoped<IDataQueryService, DataQueryService>();
+        builder.Services.AddScoped<IIdentityService, IdentityService>();
 
-        // 完美保留 Identity 的精简密码规则，仅替换底层的 DbContext
-        builder.Services.AddIdentityCore<IdentityUser>(options =>
+        // 🌟 核心改造：使用 ApplicationUser 和 Guid 版本的 Role 进行注册
+        builder.Services.AddIdentityCore<ApplicationUser>(options =>
         {
             options.Password.RequireNonAlphanumeric = false;
             options.Password.RequiredLength = 8;
         })
-            .AddRoles<IdentityRole>()
+            .AddRoles<IdentityRole<Guid>>() // 指定 Role 也是 Guid 主键
             .AddEntityFrameworkStores<IIoTDbContext>();
     }
 }

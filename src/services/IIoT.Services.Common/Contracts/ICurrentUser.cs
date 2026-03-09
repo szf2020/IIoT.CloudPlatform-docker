@@ -1,0 +1,16 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Text;
+
+namespace IIoT.Services.Common.Contracts;
+
+public interface ICurrentUser
+{
+    string? Id { get; }
+
+    string? UserName { get; }
+
+    string? Role { get; }
+
+    bool IsAuthenticated { get; }
+}

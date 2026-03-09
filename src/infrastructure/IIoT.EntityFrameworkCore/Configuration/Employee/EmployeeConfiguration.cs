@@ -29,11 +29,6 @@ public class EmployeeConfiguration : IEntityTypeConfiguration<IIoT.Core.Employee
             .HasMaxLength(50)
             .HasColumnName("real_name");
 
-        builder.Property(e => e.PasswordHash)
-            .IsRequired()
-            .HasMaxLength(256)
-            .HasColumnName("password_hash");
-
         builder.Property(e => e.IsActive)
             .IsRequired()
             .HasColumnName("is_active");
