@@ -7,17 +7,22 @@ namespace IIoT.Core.Production.Aggregates.Devices;
 /// </summary>
 public class Device : IAggregateRoot
 {
+    // 给 EF Core 预留的无参构造函数 (Protected级别，禁止业务层直接 new)
     protected Device()
     {
     }
 
-    public Device(string deviceCode, string macAddress, Guid processId)
+    /// <summary>
+    /// 领域构造工厂：强制要求名称、编号、MAC地址和工序ID为必填项
+    /// </summary>
+    public Device(string deviceName, string deviceCode, string macAddress, Guid processId)
     {
         Id = Guid.NewGuid();
+        DeviceName = deviceName;
         DeviceCode = deviceCode;
         MacAddress = macAddress;
         ProcessId = processId;
-        IsActive = true;
+        IsActive = true; // 默认注册时即为激活状态
     }
 
     /// <summary>
@@ -26,7 +31,12 @@ public class Device : IAggregateRoot
     public Guid Id { get; set; }
 
     /// <summary>
-    /// 设备编号 (如: Stacker-01)
+    /// 🌟 新增：设备显示名称 (如: 1号叠片机，主要用于 UI 展示和报表)
+    /// </summary>
+    public string DeviceName { get; set; } = null!;
+
+    /// <summary>
+    /// 设备系统编号 (如: Stacker-01，可用于业务编码规则校验)
     /// </summary>
     public string DeviceCode { get; set; } = null!;
 
