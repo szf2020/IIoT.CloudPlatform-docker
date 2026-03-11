@@ -2,6 +2,9 @@
 using IIoT.EntityFrameworkCore;
 using IIoT.EntityFrameworkCore.Identity;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
+using System;
+using System.Threading.Tasks;
 
 namespace IIoT.MigrationWorkApp.SeedData;
 
@@ -17,41 +20,77 @@ public static class SystemInitData
         if (!await roleManager.RoleExistsAsync(adminRoleName))
         {
             await roleManager.CreateAsync(new IdentityRole<Guid>(adminRoleName));
+            Console.WriteLine($"✅ 角色 [{adminRoleName}] 创建成功！");
         }
 
-        // 2. 初始化目标账号
+        // 2. 初始化目标账号参数
         var targetEmployeeNo = "101650";
-        var targetPassword = "ljh123456";
-        var realName = "系统管理员"; // 可根据实际情况修改
+        var targetPassword = "Ljh123456!"; // 保持强密码规则
+        var realName = "系统管理员";
 
-        // 3. 检查账号是否已存在，防止重复播种报错
+        // 3. 检查账号是否已存在
         var existingUser = await userManager.FindByNameAsync(targetEmployeeNo);
-        if (existingUser == null)
+        if (existingUser != null)
         {
-            // 🌟 核心：生成全局唯一的“灵魂契约 ID”
-            var sharedId = Guid.NewGuid();
+            Console.WriteLine($"ℹ️ 账号 [{targetEmployeeNo}] 已存在，跳过播种逻辑。");
+            return;
+        }
 
-            // 4. 创建底层身份认证账号 (保安)
-            var identityUser = new ApplicationUser
-            {
-                Id = sharedId,
-                UserName = targetEmployeeNo
-            };
+        // 🌟 核心防线 1：获取云原生执行策略（应对断网重试和 Aspire 底层限制）
+        var strategy = dbContext.Database.CreateExecutionStrategy();
 
-            // UserManager 会自动对 ljh123456 进行 Hash 加密并存入 AspNetUsers 表
-            var result = await userManager.CreateAsync(identityUser, targetPassword);
-            if (result.Succeeded)
+        // 🌟 核心防线 2：将所有事务包裹在执行策略中
+        await strategy.ExecuteAsync(async () =>
+        {
+            // 在策略内部合法开启强事务
+            await using var transaction = await dbContext.Database.BeginTransactionAsync();
+
+            try
             {
-                // 给账号赋予 Admin 角色
+                var sharedId = Guid.NewGuid();
+
+                var identityUser = new ApplicationUser
+                {
+                    Id = sharedId,
+                    UserName = targetEmployeeNo
+                };
+
+                // 4. 创建底层身份认证账号
+                var result = await userManager.CreateAsync(identityUser, targetPassword);
+
+                if (!result.Succeeded)
+                {
+                    Console.WriteLine($"❌ 账号 [{targetEmployeeNo}] 创建失败！详细死因如下：");
+                    foreach (var error in result.Errors)
+                    {
+                        Console.WriteLine($"   - [{error.Code}]: {error.Description}");
+                    }
+                    // 直接抛出异常，精准触发下方的 catch 回滚
+                    throw new Exception("Identity 账号创建失败，事务终止！");
+                }
+
+                // 5. 赋予 Admin 角色
                 await userManager.AddToRoleAsync(identityUser, adminRoleName);
 
-                // 5. 创建核心业务聚合根 (员工)，使用刚刚修改过的精简版构造函数
+                // 6. 创建核心业务聚合根 (员工)
                 var employee = new Employee(sharedId, targetEmployeeNo, realName);
 
                 // 写入 employees 业务表
                 dbContext.Employees.Add(employee);
                 await dbContext.SaveChangesAsync();
+
+                // 🌟 核心防线 3：所有操作全部成功，最终提交！
+                await transaction.CommitAsync();
+                Console.WriteLine($"✅ 事务提交成功！账号 [{targetEmployeeNo}] 及员工业务数据已完整播种！");
             }
-        }
+            catch (Exception ex)
+            {
+                // 🚨 发生任何异常，立刻执行时光倒流，撤销刚才所有的写入！
+                await transaction.RollbackAsync();
+                Console.WriteLine($"⛔ 发生致命错误，已触发事务回滚！所有脏数据已清除。错误信息: {ex.Message}");
+                // 将异常继续抛出，让外层的重试机制知道失败了
+                throw;
+            }
+        });
     }
 }
