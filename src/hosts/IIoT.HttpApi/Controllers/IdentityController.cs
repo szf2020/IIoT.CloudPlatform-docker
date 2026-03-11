@@ -25,35 +25,12 @@ public class IdentityController : ApiControllerBase
     }
 
     /// <summary>
-    /// 注册底层系统账号 (建立 SharedId)
-    /// </summary>
-    /// <param name="command">底层账号注册信息</param>
-    [HttpPost("register")]
-    public async Task<IActionResult> RegisterAccount([FromBody] RegisterAccountCommand command)
-    {
-        var result = await Sender.Send(command);
-        return result.IsSuccess ? Ok(result.Value) : BadRequest(result.Errors);
-    }
-
-    /// <summary>
     /// 修改当前登录账号的密码
     /// </summary>
     /// <param name="command">包含旧密码与新密码的指令</param>
     [HttpPut("password")]
     public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordCommand command)
     {
-        var result = await Sender.Send(command);
-        return result.IsSuccess ? Ok(result.Value) : BadRequest(result.Errors);
-    }
-
-    /// <summary>
-    /// 物理销毁底层账号 (将触发人事档案的级联删除)
-    /// </summary>
-    /// <param name="id">要销毁的底层账号 ID (SharedId)</param>
-    [HttpDelete("{id}")]
-    public async Task<IActionResult> DeleteAccount([FromRoute] Guid id)
-    {
-        var command = new DeleteAccountCommand(id);
         var result = await Sender.Send(command);
         return result.IsSuccess ? Ok(result.Value) : BadRequest(result.Errors);
     }

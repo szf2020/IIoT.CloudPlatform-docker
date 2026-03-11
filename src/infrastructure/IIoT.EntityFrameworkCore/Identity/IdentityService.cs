@@ -6,17 +6,14 @@ using System.Security.Claims;
 
 namespace IIoT.EntityFrameworkCore.Identity;
 
-/// <summary>
-/// 身份认证服务完整实现 (保安科)
-/// </summary>
 public class IdentityService(
     UserManager<ApplicationUser> userManager,
     RoleManager<IdentityRole<Guid>> roleManager,
-    IIoTDbContext dbContext) : IIdentityService // 🌟 注入 dbContext 用于手动开启事务
+    IIoTDbContext dbContext) : IIdentityService
 {
     private const string PermissionClaimType = "Permission";
 
-    #region 1. 账号全生命周期管理 (Account CRUD)
+    #region 1. 账号管理 (Account Management)
 
     public async Task<Result> CreateUserAsync(Guid id, string employeeNo, string password)
     {
@@ -39,7 +36,6 @@ public class IdentityService(
         var user = await userManager.FindByIdAsync(userId.ToString());
         if (user == null) return Result.Failure("用户不存在");
 
-        // 🌟 删除 Identity 账号，底层的 EF Core 会通过配置好的外键级联删除对应的 Employee！
         var result = await userManager.DeleteAsync(user);
         return ToResult(result);
     }
@@ -59,9 +55,9 @@ public class IdentityService(
         return user?.Id;
     }
 
-    #endregion 1. 账号全生命周期管理 (Account CRUD)
+    #endregion 1. 账号管理 (Account Management)
 
-    #region 2. 账号与角色查询端 (Queries)
+    #region 2. 查询服务 (Query Services)
 
     public async Task<IList<IdentityUserDto>> GetAllUsersAsync()
     {
@@ -91,13 +87,19 @@ public class IdentityService(
         return await roleManager.Roles.Select(r => r.Name!).ToListAsync();
     }
 
-    #endregion 2. 账号与角色查询端 (Queries)
+    public async Task<IList<string>> GetRolesAsync(string employeeNo)
+    {
+        var user = await userManager.FindByNameAsync(employeeNo);
+        return user == null ? new List<string>() : await userManager.GetRolesAsync(user);
+    }
 
-    #region 3. 角色与权限策略 (Security Policy)
+    #endregion 2. 查询服务 (Query Services)
+
+    #region 3. 角色与权限 (Roles & Permissions)
 
     public async Task<Result> CreateRoleAsync(string roleName)
     {
-        if (await roleManager.RoleExistsAsync(roleName)) return Result.Failure("角色已存在");
+        if (await roleManager.RoleExistsAsync(roleName)) return Result.Success();
 
         var result = await roleManager.CreateAsync(new IdentityRole<Guid>(roleName));
         return ToResult(result);
@@ -106,83 +108,53 @@ public class IdentityService(
     public async Task<Result<bool>> UpdateRolePermissionsAsync(string roleName, List<string> permissions)
     {
         var role = await roleManager.FindByNameAsync(roleName);
-        if (role == null) return Result.Failure("角色不存在");
+        if (role == null) return Result.Failure("角色不存在"); // 🌟 修复：直接使用 Result.Failure，利用隐式转换
 
-        // 🌟 开启显式事务：解决 Identity 框架多步操作无法回滚的问题
-        await using var transaction = await dbContext.Database.BeginTransactionAsync();
-        try
-        {
-            var claims = await roleManager.GetClaimsAsync(role);
-            var existingPermissions = claims.Where(c => c.Type == PermissionClaimType).ToList();
+        var claims = await roleManager.GetClaimsAsync(role);
+        var existingPermissions = claims.Where(c => c.Type == PermissionClaimType).ToList();
 
-            // 计算差集
-            var toRemove = existingPermissions.Where(c => !permissions.Contains(c.Value)).ToList();
-            var toAdd = permissions.Where(p => !existingPermissions.Any(c => c.Value == p)).ToList();
+        foreach (var claim in existingPermissions.Where(c => !permissions.Contains(c.Value)))
+            await roleManager.RemoveClaimAsync(role, claim);
 
-            // 循环删除旧权限
-            foreach (var claim in toRemove)
-                await roleManager.RemoveClaimAsync(role, claim);
+        foreach (var p in permissions.Where(p => !existingPermissions.Any(c => c.Value == p)))
+            await roleManager.AddClaimAsync(role, new Claim(PermissionClaimType, p));
 
-            // 循环添加新权限
-            foreach (var permission in toAdd)
-                await roleManager.AddClaimAsync(role, new Claim(PermissionClaimType, permission));
-
-            await transaction.CommitAsync();
-            return Result.Success(true);
-        }
-        catch (Exception)
-        {
-            await transaction.RollbackAsync();
-            throw; // 向上抛出，由全局异常处理器或调用方处理
-        }
+        return Result.Success(true);
     }
 
     public async Task<Result<bool>> UpdateUserPersonalPermissionsAsync(Guid userId, List<string> permissions)
     {
         var user = await userManager.FindByIdAsync(userId.ToString());
-        if (user == null) return Result.Failure("用户不存在");
+        if (user == null) return Result.Failure("用户不存在"); // 🌟 修复：直接使用 Result.Failure
 
-        // 🌟 开启显式事务：保证个人特批权限更新的原子性
-        await using var transaction = await dbContext.Database.BeginTransactionAsync();
-        try
-        {
-            var claims = await userManager.GetClaimsAsync(user);
-            var existingPermissions = claims.Where(c => c.Type == PermissionClaimType).ToList();
+        var claims = await userManager.GetClaimsAsync(user);
+        var existingPermissions = claims.Where(c => c.Type == PermissionClaimType).ToList();
 
-            var toRemove = existingPermissions.Where(c => !permissions.Contains(c.Value)).ToList();
-            var toAdd = permissions.Where(p => !existingPermissions.Any(c => c.Value == p)).ToList();
+        foreach (var claim in existingPermissions.Where(c => !permissions.Contains(c.Value)))
+            await userManager.RemoveClaimAsync(user, claim);
 
-            foreach (var claim in toRemove)
-                await userManager.RemoveClaimAsync(user, claim);
+        foreach (var p in permissions.Where(p => !existingPermissions.Any(c => c.Value == p)))
+            await userManager.AddClaimAsync(user, new Claim(PermissionClaimType, p));
 
-            foreach (var p in toAdd)
-                await userManager.AddClaimAsync(user, new Claim(PermissionClaimType, p));
-
-            await transaction.CommitAsync();
-            return Result.Success(true);
-        }
-        catch (Exception)
-        {
-            await transaction.RollbackAsync();
-            throw;
-        }
+        return Result.Success(true);
     }
 
-    #endregion 3. 角色与权限策略 (Security Policy)
+    #endregion 3. 角色与权限 (Roles & Permissions)
 
-    #region 4. 身份关联操作 (Assignment)
+    #region 4. 分配管理 (Assignment Management)
 
     public async Task<Result<bool>> AssignRoleToUserAsync(string employeeNo, string roleName)
     {
         var user = await userManager.FindByNameAsync(employeeNo);
-        if (user == null) return Result.Failure("用户不存在");
+        if (user == null) return Result.Failure("用户不存在"); // 🌟 修复：直接使用 Result.Failure
 
         if (!await roleManager.RoleExistsAsync(roleName)) return Result.Failure("角色未定义");
 
         if (await userManager.IsInRoleAsync(user, roleName)) return Result.Success(true);
 
         var result = await userManager.AddToRoleAsync(user, roleName);
-        return ToResult(result);
+        // 🌟 修复：IdentityResult -> Result -> 隐式转换 Result<bool>
+        return result.Succeeded ? Result.Success(true) : Result.Failure(result.Errors.Select(e => e.Description).ToArray());
     }
 
     public async Task<Result> RemoveRoleFromUserAsync(string employeeNo, string roleName)
@@ -190,24 +162,11 @@ public class IdentityService(
         var user = await userManager.FindByNameAsync(employeeNo);
         if (user == null) return Result.Failure("用户不存在");
 
-        if (await userManager.IsInRoleAsync(user, roleName))
-        {
-            var result = await userManager.RemoveFromRoleAsync(user, roleName);
-            return ToResult(result);
-        }
-
-        return Result.Success();
+        var result = await userManager.RemoveFromRoleAsync(user, roleName);
+        return ToResult(result);
     }
 
-    public async Task<IList<string>> GetRolesAsync(string employeeNo)
-    {
-        var user = await userManager.FindByNameAsync(employeeNo);
-        return user == null ? [] : await userManager.GetRolesAsync(user);
-    }
-
-    #endregion 4. 身份关联操作 (Assignment)
-
-    #region 私有辅助方法
+    #endregion 4. 分配管理 (Assignment Management)
 
     private static Result ToResult(IdentityResult result)
     {
@@ -215,6 +174,4 @@ public class IdentityService(
             ? Result.Success()
             : Result.Failure(result.Errors.Select(e => e.Description).ToArray());
     }
-
-    #endregion 私有辅助方法
 }
