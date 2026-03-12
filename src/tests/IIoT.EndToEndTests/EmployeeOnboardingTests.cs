@@ -1,4 +1,6 @@
-﻿using System.Net;
+﻿// 文件位置: src/tests/IIoT.EndToEndTests/EmployeeOnboardingTests.cs
+
+using System.Net;
 using FluentAssertions;
 using IIoT.EndToEndTests.ApiClients;
 using Xunit;
@@ -26,7 +28,7 @@ public class EmployeeOnboardingTests : IAsyncLifetime
             throw new Exception($"Admin登录失败: {adminLogin.Error?.Content}");
         _fixture.SetAuthToken(adminLogin.Content!);
 
-        // 2. 定义角色策略 (🌟 修复：一步到位传 RoleName 和 Permissions)
+        // 2. 定义角色策略
         var roleName = "Tech_" + Guid.NewGuid().ToString("N")[..6];
         var roleRes = await identityApi.DefineRolePolicyAsync(new DefineRoleRequest(roleName, ["Recipe.Read"]));
 
@@ -56,11 +58,24 @@ public class EmployeeOnboardingTests : IAsyncLifetime
             throw new Exception($"新员工登录失败: {userLogin.Error?.Content}");
         _fixture.SetAuthToken(userLogin.Content!);
 
-        // 5. 权限验证
+        // 5. 权限验证 (读)
         var readRes = await recipeApi.GetRecipesAsync();
+        if (!readRes.IsSuccessStatusCode)
+        {
+            throw new Exception($"\n🚨 【读取配方失败】\n状态码: {readRes.StatusCode}\n报错内容: {readRes.Error?.Content}\n");
+        }
         readRes.IsSuccessStatusCode.Should().BeTrue("拥有读取权限，应返回 200 OK");
+        // 6. 权限验证 (写)
+        // 🌟 核心修复：构造一个字段结构完全合法的假负载，骗过 ASP.NET Core 的模型绑定校验
+        // 让请求顺利进入 MediatR 管道，从而触发我们自己写的 AuthorizeRequirement 拦截器！
+        var createRes = await recipeApi.CreateRecipeAsync(new
+        {
+            RecipeName = "非法配方",
+            ProcessId = Guid.NewGuid(),
+            ParametersJsonb = "{}"
+        });
 
-        var createRes = await recipeApi.CreateRecipeAsync(new { Name = "非法配方" });
+        // 这时因为格式对了，底层保安科终于能检测到它缺乏 Recipe.Create 权限，完美抛出 403！
         createRes.StatusCode.Should().Be(HttpStatusCode.Forbidden, "无写入权限，必须拦截并返回 403 Forbidden");
     }
 }

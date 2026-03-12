@@ -1,6 +1,7 @@
 ﻿using IIoT.HttpApi.Infrastructure;
 using IIoT.ProductionService.Commands.Recipes;
 using IIoT.ProductionService.Queries.Recipes;
+using IIoT.SharedKernel.Paging;
 using Microsoft.AspNetCore.Mvc;
 
 namespace IIoT.HttpApi.Controllers;
@@ -19,11 +20,19 @@ public class RecipeController : ApiControllerBase
     /// <remarks>
     /// 自动根据登录人的双维权限 (工序与机台) 过滤数据。列表不包含庞大的 JSONB 参数。
     /// </remarks>
-    /// <param name="query">分页与搜索参数</param>
+    /// <param name="pagination">分页参数</param>
+    /// <param name="keyword">搜索关键字</param>
     [HttpGet]
-    public async Task<IActionResult> GetPagedList([FromQuery] GetMyRecipesPagedQuery query)
+    // 🌟 核心修复：把复杂的 record 拆开，让框架先成功绑定基础的 Pagination 和 keyword
+    public async Task<IActionResult> GetPagedList([FromQuery] Pagination pagination, [FromQuery] string? keyword = null)
     {
+        // 🌟 防御性初始化：如果前端连分页参数都没传，保证它有一个默认值，绝对不为 null
+        pagination ??= new Pagination();
+
+        // 🌟 手动组装严格的 CQRS 契约对象，再发给 MediatR
+        var query = new GetMyRecipesPagedQuery(pagination, keyword);
         var result = await Sender.Send(query);
+
         return result.IsSuccess ? Ok(result.Value) : BadRequest(result.Errors);
     }
 
