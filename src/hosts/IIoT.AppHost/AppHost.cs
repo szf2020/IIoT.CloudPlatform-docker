@@ -3,8 +3,6 @@ using Aspire.Hosting.ApplicationModel;
 
 var builder = DistributedApplication.CreateBuilder(args);
 
-// 🌟 1. 终极修复：使用我们自定义的纯净 Redis 资源！
-// 它没有任何 Aspire 官方的 TLS 强行加戏，容器只在 6379 极速裸奔启动！
 var redis = builder.AddResource(new CleanRedisResource("redis-cache"))
                    .WithImage("redis", "7.4-alpine")
                    .WithEndpoint(targetPort: 6379, name: "tcp");
@@ -22,11 +20,16 @@ var migration = builder.AddProject<Projects.IIoT_MigrationWorkApp>("iiot-migrati
     // 🌟 2. 直接引用，它会自动生成完美的 host:port 字符串！
     .WithReference(redis);
 
-builder.AddProject<Projects.IIoT_HttpApi>("iiot-httpapi")
+// 1. 将 HttpApi 的引用提取为一个变量 apiService (如果还没提的话)
+var apiService = builder.AddProject<Projects.IIoT_HttpApi>("iiot-httpapi")
     .WithReference(postgres)
-    // 🌟 3. 后端啥也不用改，AddRedisDistributedCache 瞬间成功接管！
     .WithReference(redis)
     .WaitFor(migration);
+
+builder.AddViteApp("iiot-web", "../../ui/iiot-web")
+    .WithReference(apiService)
+    .WithEnvironment("VITE_API_URL", apiService.GetEndpoint("https"))
+    .WithExternalHttpEndpoints();
 
 builder.Build().Run();
 
