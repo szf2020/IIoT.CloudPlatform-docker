@@ -6,7 +6,7 @@ using IIoT.SharedKernel.Paging;
 using IIoT.SharedKernel.Repository;
 using IIoT.SharedKernel.Result;
 
-namespace IIoT.EmployeeService.Queries;
+namespace IIoT.EmployeeService.Queries.Employees;
 
 // 列表展示 DTO：带双维管辖权计数，前端无需再发 N 个额外请求
 public record EmployeeListItemDto(

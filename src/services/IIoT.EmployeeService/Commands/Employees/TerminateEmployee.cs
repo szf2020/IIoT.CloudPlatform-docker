@@ -3,7 +3,7 @@ using IIoT.Services.Common.Contracts;
 using IIoT.SharedKernel.Messaging;
 using IIoT.SharedKernel.Result;
 
-namespace IIoT.EmployeeService.Commands;
+namespace IIoT.EmployeeService.Commands.Employees;
 
 /// <summary>
 /// 业务层指令：员工离职与彻底销户 (硬删除 / 斩首行动)

@@ -5,17 +5,27 @@
 export const Permissions = {
   // ===== 员工人事科 =====
   Employee: {
-    Read:       'Employee.Read',
-    Onboard:    'Employee.Onboard',
-    Update:     'Employee.Update',
-    Deactivate: 'Employee.Deactivate',
-    Terminate:  'Employee.Terminate',
+    Read:         'Employee.Read',
+    Onboard:      'Employee.Onboard',
+    Update:       'Employee.Update',
+    UpdateAccess: 'Employee.UpdateAccess',
+    Deactivate:   'Employee.Deactivate',
+    Terminate:    'Employee.Terminate',
+  },
+
+  // ===== 工序管理 =====
+  Process: {
+    Read:   'Process.Read',
+    Create: 'Process.Create',
+    Update: 'Process.Update',
+    Delete: 'Process.Delete',
   },
 
   // ===== 生产/设备科 =====
   Device: {
     Read:       'Device.Read',
     Create:     'Device.Create',
+    Update:     'Device.Update',
     Deactivate: 'Device.Deactivate',
   },
 
@@ -23,6 +33,7 @@ export const Permissions = {
   Recipe: {
     Read:   'Recipe.Read',
     Create: 'Recipe.Create',
+    Update: 'Recipe.Update',
   },
 
   // ===== 角色权限管理 =====

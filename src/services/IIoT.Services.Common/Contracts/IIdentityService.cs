@@ -44,4 +44,11 @@ public interface IIdentityService
     Task<Result> RemoveRoleFromUserAsync(string employeeNo, string roleName);
 
     Task<IList<string>> GetRolesAsync(string employeeNo);
+
+    /// <summary>
+    /// 获取指定角色当前绑定的全部权限点 (前端角色权限编辑页依赖此查询)
+    /// </summary>
+    /// <param name="roleName">角色名</param>
+    /// <returns>权限点列表，角色不存在时返回 null</returns>
+    Task<List<string>?> GetRolePermissionsAsync(string roleName);
 }

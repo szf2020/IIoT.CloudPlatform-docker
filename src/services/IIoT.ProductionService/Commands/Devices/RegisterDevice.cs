@@ -1,6 +1,7 @@
 ﻿using IIoT.Application.Contracts;
 using IIoT.Core.Production.Aggregates.Devices;
 using IIoT.Services.Common.Attributes;
+using IIoT.Services.Common.Contracts;
 using IIoT.SharedKernel.Messaging;
 using IIoT.SharedKernel.Repository;
 using IIoT.SharedKernel.Result;
@@ -14,7 +15,6 @@ namespace IIoT.ProductionService.Commands.Devices;
 /// <summary>
 /// 业务指令：注册新物理设备
 /// </summary>
-// 🌟 第一道门：行为拦截。强制校验 Token 中是否含有 "Device.Create" 权限点
 [AuthorizeRequirement("Device.Create")]
 public record RegisterDeviceCommand(
     string DeviceName,
@@ -27,8 +27,9 @@ public record RegisterDeviceCommand(
 /// 设备注册处理器
 /// </summary>
 public class RegisterDeviceHandler(
-    IDataQueryService dataQueryService,   // 🌟 注入极速查询服务，专门用于防重校验 (绕过EF追踪)
-    IRepository<Device> deviceRepository  // 🌟 注入写仓储，专门用于状态变更与落地
+    IDataQueryService dataQueryService,
+    IRepository<Device> deviceRepository,
+    ICacheService cacheService               // 🌟 注入缓存服务
 ) : ICommandHandler<RegisterDeviceCommand, Result<Guid>>
 {
     public async Task<Result<Guid>> Handle(RegisterDeviceCommand request, CancellationToken cancellationToken)
@@ -68,7 +69,6 @@ public class RegisterDeviceHandler(
         // 🌟 2. 领域对象构建与持久化
         // ==========================================
 
-        // 调用充血模型构造函数，强制满足聚合根的完整性约束
         var device = new Device(
             request.DeviceName,
             request.DeviceCode,
@@ -76,11 +76,18 @@ public class RegisterDeviceHandler(
             request.ProcessId
         );
 
-        // 业务落库
         deviceRepository.Add(device);
-        await deviceRepository.SaveChangesAsync(cancellationToken);
+        var affected = await deviceRepository.SaveChangesAsync(cancellationToken);
 
-        // 完美返回 Result.Success，并携带新生成设备的 Guid
+        // ==========================================
+        // 🌟 3. 缓存一致性保障：新设备入库后爆破列表缓存
+        // ==========================================
+        if (affected > 0)
+        {
+            await cacheService.RemoveAsync("iiot:devices:v1:all-active", cancellationToken);
+            await cacheService.RemoveAsync($"iiot:devices:process:v1:{device.ProcessId}", cancellationToken);
+        }
+
         return Result.Success(device.Id);
     }
 }

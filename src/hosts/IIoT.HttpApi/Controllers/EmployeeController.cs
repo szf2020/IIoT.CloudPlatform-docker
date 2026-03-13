@@ -1,5 +1,5 @@
-﻿using IIoT.EmployeeService.Commands;
-using IIoT.EmployeeService.Queries;
+﻿using IIoT.EmployeeService.Commands.Employees;
+using IIoT.EmployeeService.Queries.Employees;
 using IIoT.HttpApi.Infrastructure;
 using Microsoft.AspNetCore.Mvc;
 

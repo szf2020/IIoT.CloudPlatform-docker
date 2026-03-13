@@ -5,7 +5,7 @@ using IIoT.SharedKernel.Messaging;
 using IIoT.SharedKernel.Repository;
 using IIoT.SharedKernel.Result;
 
-namespace IIoT.EmployeeService.Queries;
+namespace IIoT.EmployeeService.Queries.Employees;
 
 // 1. 定义一个专门返回给前端的纯净 DTO
 public record EmployeeAccessDto(

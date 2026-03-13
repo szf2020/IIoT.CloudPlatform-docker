@@ -13,7 +13,7 @@ using System.Threading.Tasks;
 
 namespace IIoT.ProductionService.Commands.Devices;
 
-[AuthorizeRequirement("Device.Update")] // 第一道门：基础行为权限
+[AuthorizeRequirement("Device.Update")]
 public record UpdateDeviceProfileCommand(
     Guid DeviceId,
     string DeviceName,
@@ -22,10 +22,10 @@ public record UpdateDeviceProfileCommand(
 
 public class UpdateDeviceProfileHandler(
     ICurrentUser currentUser,
-    IReadRepository<Employee> employeeRepository, // 读取员工管辖权
-    IRepository<Device> deviceRepository,         // 实体修改落地
-    IDataQueryService dataQueryService,           // 防重校验
-    ICacheService cacheService                    // 🌟 注入全局缓存服务
+    IReadRepository<Employee> employeeRepository,
+    IRepository<Device> deviceRepository,
+    IDataQueryService dataQueryService,
+    ICacheService cacheService
 ) : ICommandHandler<UpdateDeviceProfileCommand, Result<bool>>
 {
     public async Task<Result<bool>> Handle(UpdateDeviceProfileCommand request, CancellationToken cancellationToken)
@@ -36,18 +36,17 @@ public class UpdateDeviceProfileHandler(
         // ==========================================
         // 🌟 第二道门：工序管辖权绝对拦截 (ABAC)
         // ==========================================
-        if (currentUser.Role != "Admin") // Admin 拥有全厂上帝视角，直接放行
+        if (currentUser.Role != "Admin")
         {
             if (!Guid.TryParse(currentUser.Id, out var userId)) return Result.Failure("用户凭证异常");
 
             var employee = await employeeRepository.GetAsync(
                 e => e.Id == userId,
-                [e => e.ProcessAccesses], // 联级拉取该员工的【工序管辖权】
+                [e => e.ProcessAccesses],
                 cancellationToken);
 
             if (employee == null) return Result.Failure("系统中未找到您的员工档案");
 
-            // 判断该设备所属的工序，是否在当前登录人的管辖列表中
             var hasAccess = employee.ProcessAccesses.Any(pa => pa.ProcessId == device.ProcessId);
             if (!hasAccess) return Result.Failure("越权警告：您没有该设备所属工序的管理权限，禁止修改！");
         }
@@ -74,10 +73,9 @@ public class UpdateDeviceProfileHandler(
         // ==========================================
         if (affected > 0)
         {
-            // 1. 删除该设备的单体缓存
             await cacheService.RemoveAsync($"iiot:device:v1:{device.Id}", cancellationToken);
-            // 2. 删除该工序下的设备列表缓存 (如果有的情况下)
             await cacheService.RemoveAsync($"iiot:devices:process:v1:{device.ProcessId}", cancellationToken);
+            await cacheService.RemoveAsync("iiot:devices:v1:all-active", cancellationToken);
         }
 
         return Result.Success(true);

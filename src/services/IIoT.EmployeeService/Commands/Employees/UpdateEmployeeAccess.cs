@@ -5,7 +5,7 @@ using IIoT.SharedKernel.Messaging;
 using IIoT.SharedKernel.Repository;
 using IIoT.SharedKernel.Result;
 
-namespace IIoT.EmployeeService.Commands;
+namespace IIoT.EmployeeService.Commands.Employees;
 
 /// <summary>
 /// 业务层指令：全量同步/更新员工的管辖权

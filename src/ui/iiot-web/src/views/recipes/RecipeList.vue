@@ -104,13 +104,19 @@
                 <input class="form-input" v-model="createForm.RecipeName" placeholder="如：A型号冬季配方" />
               </div>
               <div class="form-field">
-                <label class="form-label">归属工序 ID <span class="required">*</span></label>
-                <input class="form-input mono-input" v-model="createForm.ProcessId" placeholder="工序 UUID" />
+                <label class="form-label">归属工序 <span class="required">*</span></label>
+                <select class="form-input" v-model="createForm.ProcessId">
+                  <option value="">请选择工序</option>
+                  <option v-for="p in allProcesses" :key="p.id" :value="p.id">{{ p.processCode }} · {{ p.processName }}</option>
+                </select>
               </div>
             </div>
             <div class="form-field">
-              <label class="form-label">专属机台 ID <span class="optional">（不填 = 工序通用配方）</span></label>
-              <input class="form-input mono-input" v-model="createForm.DeviceId" placeholder="留空则为通用配方，填入机台 UUID 则为特调配方" />
+              <label class="form-label">专属机台 <span class="optional">（不选 = 工序通用配方）</span></label>
+              <select class="form-input" v-model="createForm.DeviceId">
+                <option value="">通用配方（不绑定机台）</option>
+                <option v-for="d in allDevices" :key="d.id" :value="d.id">{{ d.deviceCode }} · {{ d.deviceName }}</option>
+              </select>
             </div>
             <div class="form-field">
               <label class="form-label">
@@ -283,6 +289,8 @@ import {
   updateRecipeParametersApi, deactivateRecipeApi,
   type RecipeListItemDto, type RecipeDetailDto, type PagedMetaData,
 } from '../../api/recipe';
+import { getAllMfgProcessesApi, type MfgProcessSelectDto } from '../../api/mfgProcess';
+import { getAllActiveDevicesApi, type DeviceSelectDto } from '../../api/device';
 
 const recipes = ref<RecipeListItemDto[]>([]);
 const loading = ref(false);
@@ -290,6 +298,14 @@ const keyword = ref('');
 const currentPage = ref(1);
 const metaData = ref<PagedMetaData>({ totalCount: 0, pageSize: 10, currentPage: 1, totalPages: 1 });
 const submitting = ref(false);
+
+// 🌟 全量工序和设备列表（供下拉选择器使用）
+const allProcesses = ref<MfgProcessSelectDto[]>([]);
+const allDevices = ref<DeviceSelectDto[]>([]);
+const fetchSelectData = async () => {
+  try { allProcesses.value = await getAllMfgProcessesApi() as unknown as MfgProcessSelectDto[]; } catch { allProcesses.value = []; }
+  try { allDevices.value = await getAllActiveDevicesApi() as unknown as DeviceSelectDto[]; } catch { allDevices.value = []; }
+};
 
 const pageNumbers = computed(() => {
   const total = metaData.value.totalPages;
@@ -359,14 +375,15 @@ const createForm = reactive({
 
 const validateJson = () => { jsonValid.value = isValidJson(createForm.ParametersJsonb); };
 
-const openCreateModal = () => {
+const openCreateModal = async () => {
   Object.assign(createForm, { RecipeName: '', ProcessId: '', DeviceId: '', ParametersJsonb: '{\n  \n}' });
   jsonValid.value = true;
   showCreateModal.value = true;
+  await fetchSelectData();
 };
 
 const submitCreate = async () => {
-  if (!createForm.RecipeName.trim() || !createForm.ProcessId.trim()) { alert('配方名称和工序 ID 为必填项'); return; }
+  if (!createForm.RecipeName.trim() || !createForm.ProcessId) { alert('配方名称和归属工序为必填项'); return; }
   if (!isValidJson(createForm.ParametersJsonb)) { alert('工艺参数 JSON 格式错误，请检查'); return; }
   submitting.value = true;
   try {
@@ -459,7 +476,7 @@ const handleDeactivate = (recipe: RecipeListItemDto) => {
   });
 };
 
-onMounted(() => fetchList());
+onMounted(() => { fetchList(); fetchSelectData(); });
 </script>
 
 <style scoped>
@@ -559,6 +576,8 @@ onMounted(() => fetchList());
 .form-input { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); border-radius: 3px; padding: 8px 12px; color: rgba(255,255,255,0.8); font-size: 13px; font-family: 'Noto Sans SC', sans-serif; outline: none; transition: border-color 0.2s; }
 .form-input:focus { border-color: rgba(0,229,255,0.4); }
 .form-input::placeholder { color: rgba(255,255,255,0.2); }
+select.form-input { appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M3 4.5l3 3 3-3' stroke='%2300e5ff' stroke-width='1.2' fill='none' stroke-linecap='round'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; padding-right: 32px; cursor: pointer; }
+select.form-input option { background: #0f1525; color: #e0e4ef; }
 .mono-input { font-family: 'Courier New', monospace; font-size: 12px; }
 .form-hint { font-size: 11px; color: rgba(255,255,255,0.2); margin: 0; }
 .readonly-field { display: flex; align-items: center; padding: 6px 0; }

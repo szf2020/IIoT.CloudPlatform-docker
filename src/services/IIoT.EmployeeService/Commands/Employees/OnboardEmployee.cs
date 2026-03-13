@@ -10,7 +10,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace IIoT.EmployeeService.Commands;
+namespace IIoT.EmployeeService.Commands.Employees;
 
 [AuthorizeRequirement("Employee.Onboard")]
 public record OnboardEmployeeCommand(

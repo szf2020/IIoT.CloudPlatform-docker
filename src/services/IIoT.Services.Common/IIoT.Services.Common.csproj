@@ -8,7 +8,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\core\IIoT.Core.Production\IIoT.Core.Production.csproj" />
-    <ProjectReference Include="..\..\core\IIoT.Employee\IIoT.Core.Employee.csproj" />
+    <ProjectReference Include="..\..\core\IIoT.Employee\IIoT.Core.Employees.csproj" />
   </ItemGroup>
 
 </Project>

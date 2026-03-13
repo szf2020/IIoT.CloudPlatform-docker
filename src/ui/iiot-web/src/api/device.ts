@@ -17,6 +17,15 @@ export interface DeviceListItemDto {
   isActive: boolean;
 }
 
+/** 设备下拉选择 DTO — 对齐 DeviceSelectDto */
+export interface DeviceSelectDto {
+  id: string;
+  deviceName: string;
+  deviceCode: string;
+  processId: string;
+  isActive: boolean;
+}
+
 /** 设备注册指令 — 对齐 RegisterDeviceCommand */
 export interface RegisterDevicePayload {
   DeviceName: string;
@@ -53,6 +62,11 @@ export const getDevicePagedListApi = (params: {
       Keyword: params.Keyword || undefined,
     },
   });
+};
+
+/** 获取全量活跃设备列表 (管辖权分配选择器用，不做ABAC过滤) — GET /api/v1/device/all */
+export const getAllActiveDevicesApi = () => {
+  return http.get<DeviceSelectDto[]>('/device/all');
 };
 
 /** 注册新设备 — POST /api/v1/device */

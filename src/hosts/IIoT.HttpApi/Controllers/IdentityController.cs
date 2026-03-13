@@ -16,7 +16,6 @@ public class IdentityController : ApiControllerBase
     /// <summary>
     /// 极速登录并获取 JWT 令牌
     /// </summary>
-    /// <param name="command">包含用户名和密码的登录凭证</param>
     [HttpPost("login")]
     public async Task<IActionResult> Login([FromBody] LoginUserCommand command)
     {
@@ -27,7 +26,6 @@ public class IdentityController : ApiControllerBase
     /// <summary>
     /// 修改当前登录账号的密码
     /// </summary>
-    /// <param name="command">包含旧密码与新密码的指令</param>
     [HttpPut("password")]
     public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordCommand command)
     {
@@ -48,7 +46,6 @@ public class IdentityController : ApiControllerBase
     /// <summary>
     /// 定义全新的系统角色
     /// </summary>
-    /// <param name="command">角色定义指令</param>
     [HttpPost("roles")]
     public async Task<IActionResult> DefineRolePolicy([FromBody] DefineRolePolicyCommand command)
     {
@@ -57,10 +54,19 @@ public class IdentityController : ApiControllerBase
     }
 
     /// <summary>
+    /// 获取指定角色当前绑定的全部权限点
+    /// </summary>
+    [HttpGet("roles/{roleName}/permissions")]
+    public async Task<IActionResult> GetRolePermissions([FromRoute] string roleName)
+    {
+        var query = new GetRolePermissionsQuery(roleName);
+        var result = await Sender.Send(query);
+        return result.IsSuccess ? Ok(result.Value) : BadRequest(result.Errors);
+    }
+
+    /// <summary>
     /// 更新指定角色的行为权限点 (Claims 组)
     /// </summary>
-    /// <param name="roleName">目标角色名 (如: Operator)</param>
-    /// <param name="permissions">最新配置的行为权限点字符串集合</param>
     [HttpPut("roles/{roleName}/permissions")]
     public async Task<IActionResult> UpdateRolePermissions(
         [FromRoute] string roleName,
@@ -68,6 +74,16 @@ public class IdentityController : ApiControllerBase
     {
         var command = new UpdateRolePermissionsCommand(roleName, permissions);
         var result = await Sender.Send(command);
+        return result.IsSuccess ? Ok(result.Value) : BadRequest(result.Errors);
+    }
+
+    /// <summary>
+    /// 获取系统全部已定义的权限点 (动态聚合，按模块分组)
+    /// </summary>
+    [HttpGet("permissions/all")]
+    public async Task<IActionResult> GetAllPermissions()
+    {
+        var result = await Sender.Send(new GetAllDefinedPermissionsQuery());
         return result.IsSuccess ? Ok(result.Value) : BadRequest(result.Errors);
     }
 }

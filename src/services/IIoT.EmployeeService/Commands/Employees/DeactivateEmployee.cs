@@ -4,7 +4,7 @@ using IIoT.SharedKernel.Messaging;
 using IIoT.SharedKernel.Repository;
 using IIoT.SharedKernel.Result;
 
-namespace IIoT.EmployeeService.Commands;
+namespace IIoT.EmployeeService.Commands.Employees;
 
 /// <summary>
 /// 业务层指令：员工软性离职/停用 (保留所有历史追溯数据)

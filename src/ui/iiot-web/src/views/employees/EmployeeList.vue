@@ -126,12 +126,28 @@
               <div class="access-panel">
                 <div class="access-panel-title">工序管辖（粗颗粒）</div>
                 <div class="access-hint">选中工序后，员工可访问该工序下所有通用配方</div>
-                <div class="access-placeholder"><span class="coming-soon">📋 工序选择器待后续迭代完善</span></div>
+                <div class="access-checklist">
+                  <label v-for="p in allProcesses" :key="p.id" class="access-check-item">
+                    <input type="checkbox" :value="p.id" v-model="onboardProcessIds" />
+                    <span class="ck-box"></span>
+                    <span class="ck-code">{{ p.processCode }}</span>
+                    <span class="ck-name">{{ p.processName }}</span>
+                  </label>
+                  <div v-if="allProcesses.length===0" class="access-empty">暂无工序，请先前往工序管理创建</div>
+                </div>
               </div>
               <div class="access-panel">
                 <div class="access-panel-title">机台管辖（精细颗粒）</div>
                 <div class="access-hint">选中具体机台后，员工可访问该机台的专属配方</div>
-                <div class="access-placeholder"><span class="coming-soon">🔧 设备列表将在第5步联动</span></div>
+                <div class="access-checklist">
+                  <label v-for="d in allDevices" :key="d.id" class="access-check-item">
+                    <input type="checkbox" :value="d.id" v-model="onboardDeviceIds" />
+                    <span class="ck-box"></span>
+                    <span class="ck-code">{{ d.deviceCode }}</span>
+                    <span class="ck-name">{{ d.deviceName }}</span>
+                  </label>
+                  <div v-if="allDevices.length===0" class="access-empty">暂无设备，请先前往设备台账注册</div>
+                </div>
               </div>
             </div>
           </div>
@@ -184,12 +200,28 @@
               <div class="access-panel">
                 <div class="access-panel-title">工序管辖（粗颗粒）</div>
                 <div class="access-hint">当前已分配 {{ accessForm.ProcessIds.length }} 个工序</div>
-                <div class="access-placeholder"><span class="coming-soon">📋 工序选择器待后续迭代完善</span></div>
+                <div class="access-checklist">
+                  <label v-for="p in allProcesses" :key="p.id" class="access-check-item">
+                    <input type="checkbox" :value="p.id" v-model="accessForm.ProcessIds" />
+                    <span class="ck-box"></span>
+                    <span class="ck-code">{{ p.processCode }}</span>
+                    <span class="ck-name">{{ p.processName }}</span>
+                  </label>
+                  <div v-if="allProcesses.length===0" class="access-empty">暂无工序数据</div>
+                </div>
               </div>
               <div class="access-panel">
                 <div class="access-panel-title">机台管辖（精细颗粒）</div>
                 <div class="access-hint">当前已分配 {{ accessForm.DeviceIds.length }} 台机台</div>
-                <div class="access-placeholder"><span class="coming-soon">🔧 设备列表将在第5步联动</span></div>
+                <div class="access-checklist">
+                  <label v-for="d in allDevices" :key="d.id" class="access-check-item">
+                    <input type="checkbox" :value="d.id" v-model="accessForm.DeviceIds" />
+                    <span class="ck-box"></span>
+                    <span class="ck-code">{{ d.deviceCode }}</span>
+                    <span class="ck-name">{{ d.deviceName }}</span>
+                  </label>
+                  <div v-if="allDevices.length===0" class="access-empty">暂无设备数据</div>
+                </div>
               </div>
             </div>
           </div>
@@ -221,13 +253,13 @@
               <div class="detail-item"><span class="detail-label">系统ID</span><span class="detail-value id-text">{{ detailData.id }}</span></div>
               <div class="detail-item full"><span class="detail-label">工序管辖</span>
                 <div class="id-chips" v-if="detailData.processIds.length">
-                  <span v-for="id in detailData.processIds" :key="id" class="id-chip">{{ id.substring(0,8) }}…</span>
+                  <span v-for="id in detailData.processIds" :key="id" class="id-chip">{{ processNameMap[id] || id.substring(0,8)+'…' }}</span>
                 </div>
                 <span v-else class="detail-value muted">未分配</span>
               </div>
               <div class="detail-item full"><span class="detail-label">机台管辖</span>
                 <div class="id-chips" v-if="detailData.deviceIds.length">
-                  <span v-for="id in detailData.deviceIds" :key="id" class="id-chip device">{{ id.substring(0,8) }}…</span>
+                  <span v-for="id in detailData.deviceIds" :key="id" class="id-chip device">{{ deviceNameMap[id] || id.substring(0,8)+'…' }}</span>
                 </div>
                 <span v-else class="detail-value muted">未分配</span>
               </div>
@@ -269,6 +301,8 @@ import {
   deactivateEmployeeApi, terminateEmployeeApi, getAllRolesApi,
   type EmployeeListItemDto, type EmployeeDetailDto, type PagedMetaData,
 } from '../../api/employee';
+import { getAllMfgProcessesApi, type MfgProcessSelectDto } from '../../api/mfgProcess';
+import { getAllActiveDevicesApi, type DeviceSelectDto } from '../../api/device';
 
 const employees = ref<EmployeeListItemDto[]>([]);
 const loading = ref(false);
@@ -277,6 +311,28 @@ const currentPage = ref(1);
 const metaData = ref<PagedMetaData>({ totalCount: 0, pageSize: 10, currentPage: 1, totalPages: 1 });
 const availableRoles = ref<string[]>([]);
 const submitting = ref(false);
+
+// 🌟 全量工序和设备列表（供多选器使用）
+const allProcesses = ref<MfgProcessSelectDto[]>([]);
+const allDevices = ref<DeviceSelectDto[]>([]);
+
+// 名称映射表（详情展示用）
+const processNameMap = computed(() => {
+  const m: Record<string, string> = {};
+  for (const p of allProcesses.value) m[p.id] = `${p.processCode} · ${p.processName}`;
+  return m;
+});
+const deviceNameMap = computed(() => {
+  const m: Record<string, string> = {};
+  for (const d of allDevices.value) m[d.id] = `${d.deviceCode} · ${d.deviceName}`;
+  return m;
+});
+
+// 拉取下拉数据
+const fetchSelectData = async () => {
+  try { allProcesses.value = await getAllMfgProcessesApi() as unknown as MfgProcessSelectDto[]; } catch { allProcesses.value = []; }
+  try { allDevices.value = await getAllActiveDevicesApi() as unknown as DeviceSelectDto[]; } catch { allDevices.value = []; }
+};
 
 const pageNumbers = computed(() => {
   const total = metaData.value.totalPages;
@@ -299,38 +355,35 @@ const fetchList = async () => {
       PaginationParams: { PageNumber: currentPage.value, PageSize: 10 },
       Keyword: keyword.value || undefined,
     }) as unknown as Record<string, unknown>;
-
     if (raw && raw.metaData) {
       metaData.value = raw.metaData as PagedMetaData;
-      // PagedList 继承 List，序列化出的数字key就是数组元素
       const items: EmployeeListItemDto[] = [];
-      for (const k of Object.keys(raw)) {
-        if (!isNaN(Number(k))) items.push(raw[k] as EmployeeListItemDto);
-      }
+      for (const k of Object.keys(raw)) { if (!isNaN(Number(k))) items.push(raw[k] as EmployeeListItemDto); }
       employees.value = items;
     } else if (Array.isArray(raw)) {
       employees.value = raw as EmployeeListItemDto[];
     }
-  } catch {
-    employees.value = [];
-  } finally {
-    loading.value = false;
-  }
+  } catch { employees.value = []; } finally { loading.value = false; }
 };
 
 const goPage = (page: number) => { currentPage.value = page; fetchList(); };
 
-// 入职弹窗
+// ── 入职弹窗 ──
 const showOnboardModal = ref(false);
 const onboardForm = reactive({ EmployeeNo: '', RealName: '', Password: '', RoleName: '' });
+const onboardProcessIds = ref<string[]>([]);
+const onboardDeviceIds = ref<string[]>([]);
 
 const openOnboardModal = async () => {
   Object.assign(onboardForm, { EmployeeNo: '', RealName: '', Password: '', RoleName: '' });
+  onboardProcessIds.value = [];
+  onboardDeviceIds.value = [];
   showOnboardModal.value = true;
   try {
     const roles = await getAllRolesApi() as unknown as string[];
     availableRoles.value = roles.filter(r => r !== 'Admin');
   } catch { availableRoles.value = []; }
+  await fetchSelectData();
 };
 
 const submitOnboard = async () => {
@@ -339,12 +392,19 @@ const submitOnboard = async () => {
   }
   submitting.value = true;
   try {
-    await onboardEmployeeApi({ EmployeeNo: onboardForm.EmployeeNo, RealName: onboardForm.RealName, Password: onboardForm.Password, RoleName: onboardForm.RoleName || undefined });
+    await onboardEmployeeApi({
+      EmployeeNo: onboardForm.EmployeeNo,
+      RealName: onboardForm.RealName,
+      Password: onboardForm.Password,
+      RoleName: onboardForm.RoleName || undefined,
+      ProcessIds: onboardProcessIds.value.length ? onboardProcessIds.value : undefined,
+      DeviceIds: onboardDeviceIds.value.length ? onboardDeviceIds.value : undefined,
+    });
     showOnboardModal.value = false; fetchList();
   } catch { } finally { submitting.value = false; }
 };
 
-// 编辑弹窗
+// ── 编辑弹窗 ──
 const showEditModal = ref(false);
 const editTarget = ref<EmployeeListItemDto | null>(null);
 const editForm = reactive({ RealName: '', IsActive: true });
@@ -362,7 +422,7 @@ const submitEdit = async () => {
   } catch { } finally { submitting.value = false; }
 };
 
-// 管辖权弹窗
+// ── 管辖权弹窗 ──
 const showAccessModal = ref(false);
 const accessLoading = ref(false);
 const accessTargetId = ref('');
@@ -370,6 +430,7 @@ const accessForm = reactive({ ProcessIds: [] as string[], DeviceIds: [] as strin
 
 const openAccessModal = async (id: string) => {
   accessTargetId.value = id; accessLoading.value = true; showAccessModal.value = true;
+  await fetchSelectData();
   try {
     const access = await getEmployeeAccessApi(id) as unknown as { processIds: string[]; deviceIds: string[] };
     accessForm.ProcessIds = [...(access.processIds || [])]; accessForm.DeviceIds = [...(access.deviceIds || [])];
@@ -380,13 +441,11 @@ const submitAccess = async () => {
   submitting.value = true;
   try {
     await updateEmployeeAccessApi(accessTargetId.value, { ProcessIds: accessForm.ProcessIds, DeviceIds: accessForm.DeviceIds });
-    showAccessModal.value = false;
-    // 管辖权变更后刷新列表，让后端重新计算 processCount/deviceCount
-    fetchList();
+    showAccessModal.value = false; fetchList();
   } catch { } finally { submitting.value = false; }
 };
 
-// 详情弹窗
+// ── 详情弹窗 ──
 const showDetailModal = ref(false);
 const detailData = ref<EmployeeDetailDto | null>(null);
 
@@ -397,7 +456,7 @@ const openDetailModal = async (id: string) => {
   } catch { }
 };
 
-// 确认对话框
+// ── 确认对话框 ──
 const confirmDialog = reactive({ show: false, type: 'danger', title: '', desc: '', confirmText: '', onConfirm: () => {} });
 
 const handleDeactivate = (emp: EmployeeListItemDto) => {
@@ -405,11 +464,7 @@ const handleDeactivate = (emp: EmployeeListItemDto) => {
     show: true, type: 'danger', title: '停用员工',
     desc: `确定要停用「${emp.realName}（${emp.employeeNo}）」吗？停用后该员工将无法登录，档案数据保留。`,
     confirmText: '确认停用',
-    onConfirm: async () => {
-      submitting.value = true;
-      try { await deactivateEmployeeApi(emp.id); confirmDialog.show = false; fetchList(); }
-      finally { submitting.value = false; }
-    }
+    onConfirm: async () => { submitting.value = true; try { await deactivateEmployeeApi(emp.id); confirmDialog.show = false; fetchList(); } finally { submitting.value = false; } }
   });
 };
 
@@ -418,15 +473,11 @@ const handleTerminate = (emp: EmployeeListItemDto) => {
     show: true, type: 'danger', title: '⚠️ 员工离职（不可撤销）',
     desc: `即将永久删除「${emp.realName}（${emp.employeeNo}）」的所有档案，含身份账号与权限数据，此操作不可撤销！`,
     confirmText: '确认离职销户',
-    onConfirm: async () => {
-      submitting.value = true;
-      try { await terminateEmployeeApi(emp.id); confirmDialog.show = false; fetchList(); }
-      finally { submitting.value = false; }
-    }
+    onConfirm: async () => { submitting.value = true; try { await terminateEmployeeApi(emp.id); confirmDialog.show = false; fetchList(); } finally { submitting.value = false; } }
   });
 };
 
-onMounted(() => fetchList());
+onMounted(() => { fetchList(); fetchSelectData(); });
 </script>
 
 <style scoped>
@@ -519,13 +570,25 @@ onMounted(() => fetchList());
 .toggle input:checked + .toggle-slider { background:rgba(0,229,160,0.2); border-color:rgba(0,229,160,0.4); }
 .toggle input:checked + .toggle-slider::before { transform:translateX(18px); background:#00e5a0; }
 .toggle-label { font-size:13px; color:rgba(255,255,255,0.6); }
+
+/* 🌟 双维管辖权多选器 */
 .dual-access-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
 .access-panel { background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.07); border-radius:4px; padding:14px; }
 .access-panel-title { font-size:13px; font-weight:500; color:rgba(255,255,255,0.7); margin-bottom:8px; }
 .access-hint { font-size:11px; color:rgba(255,255,255,0.25); margin-bottom:12px; line-height:1.5; }
-.access-placeholder { padding:12px; background:rgba(255,255,255,0.02); border-radius:3px; text-align:center; }
-.coming-soon { font-size:12px; color:rgba(255,255,255,0.2); }
+.access-checklist { max-height:200px; overflow-y:auto; display:flex; flex-direction:column; gap:4px; }
+.access-check-item { display:flex; align-items:center; gap:8px; padding:6px 8px; border-radius:3px; cursor:pointer; transition:background 0.15s; }
+.access-check-item:hover { background:rgba(0,229,255,0.05); }
+.access-check-item input { display:none; }
+.ck-box { width:14px; height:14px; border:1.5px solid rgba(255,255,255,0.2); border-radius:2px; flex-shrink:0; display:flex; align-items:center; justify-content:center; transition:all 0.15s; }
+.access-check-item input:checked ~ .ck-box { background:#00e5ff; border-color:#00e5ff; }
+.access-check-item input:checked ~ .ck-box::after { content:'✓'; font-size:10px; color:#080c18; font-weight:700; }
+.ck-code { font-family:'Courier New',monospace; font-size:11px; color:#00e5ff; min-width:70px; }
+.ck-name { font-size:12px; color:rgba(255,255,255,0.5); }
+.access-check-item input:checked ~ .ck-name { color:rgba(255,255,255,0.8); }
+.access-empty { font-size:12px; color:rgba(255,255,255,0.2); text-align:center; padding:16px 0; }
 .access-loading { text-align:center; padding:24px; font-size:13px; color:rgba(255,255,255,0.3); }
+
 .detail-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
 .detail-item { display:flex; flex-direction:column; gap:5px; }
 .detail-item.full { grid-column:1 / -1; }
@@ -535,7 +598,7 @@ onMounted(() => fetchList());
 .detail-value.id-text { font-size:11px; color:rgba(255,255,255,0.3); font-family:monospace; }
 .detail-value.muted { color:rgba(255,255,255,0.2); }
 .id-chips { display:flex; flex-wrap:wrap; gap:6px; }
-.id-chip { padding:3px 8px; border-radius:3px; font-size:11px; font-family:monospace; background:rgba(0,119,255,0.1); border:1px solid rgba(0,119,255,0.2); color:rgba(0,119,255,0.8); }
+.id-chip { padding:3px 8px; border-radius:3px; font-size:11px; background:rgba(0,119,255,0.1); border:1px solid rgba(0,119,255,0.2); color:rgba(0,119,255,0.8); }
 .id-chip.device { background:rgba(0,229,255,0.08); border-color:rgba(0,229,255,0.2); color:rgba(0,229,255,0.7); }
 .confirm-box { background:#0e1526; border:1px solid rgba(255,77,79,0.2); border-radius:6px; padding:28px; width:380px; max-width:95vw; text-align:center; box-shadow:0 24px 64px rgba(0,0,0,0.7); }
 .confirm-icon { margin-bottom:14px; }

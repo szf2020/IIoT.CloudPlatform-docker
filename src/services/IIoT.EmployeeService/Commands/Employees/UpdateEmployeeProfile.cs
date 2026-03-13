@@ -4,7 +4,7 @@ using IIoT.SharedKernel.Messaging;
 using IIoT.SharedKernel.Repository;
 using IIoT.SharedKernel.Result;
 
-namespace IIoT.EmployeeService.Commands;
+namespace IIoT.EmployeeService.Commands.Employees;
 
 /// <summary>
 /// 业务层指令：维护员工基础人事档案

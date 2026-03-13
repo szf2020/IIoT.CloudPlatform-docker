@@ -29,6 +29,12 @@ const routes: Array<RouteRecordRaw> = [
         meta: { requiresAuth: true, requiredPermission: Permissions.Employee.Read, title: '员工花名册' }
       },
       {
+        path: 'processes',
+        name: 'Processes',
+        component: () => import('../views/mfgprocess/MfgProcessList.vue'),
+        meta: { requiresAuth: true, requiredPermission: Permissions.Process.Read, title: '工序管理' }
+      },
+      {
         path: 'devices',
         name: 'Devices',
         component: () => import('../views/devices/DeviceList.vue'),
@@ -39,6 +45,12 @@ const routes: Array<RouteRecordRaw> = [
         name: 'Recipes',
         component: () => import('../views/recipes/RecipeList.vue'),
         meta: { requiresAuth: true, requiredPermission: Permissions.Recipe.Read, title: '配方管理' }
+      },
+      {
+        path: 'roles',
+        name: 'Roles',
+        component: () => import('../views/roles/RoleList.vue'),
+        meta: { requiresAuth: true, requiredPermission: Permissions.Role.Define, title: '角色与权限' }
       },
       {
         path: 'forbidden',

@@ -22,7 +22,7 @@ public class DeactivateDeviceHandler(
     ICurrentUser currentUser,
     IReadRepository<Employee> employeeRepository,
     IRepository<Device> deviceRepository,
-    ICacheService cacheService                    // 🌟 缓存服务
+    ICacheService cacheService
 ) : ICommandHandler<DeactivateDeviceCommand, Result<bool>>
 {
     public async Task<Result<bool>> Handle(DeactivateDeviceCommand request, CancellationToken cancellationToken)
@@ -33,7 +33,7 @@ public class DeactivateDeviceHandler(
         // 已经是停用状态，直接返回成功 (幂等性)
         if (!device.IsActive) return Result.Success(true);
 
-        // 🌟 第二道门：依然要拦截试图越权停用别人设备的操作
+        // 🌟 第二道门：ABAC 管辖权拦截
         if (currentUser.Role != "Admin")
         {
             var userId = Guid.Parse(currentUser.Id!);
@@ -46,7 +46,6 @@ public class DeactivateDeviceHandler(
             if (!hasAccess) return Result.Failure("越权警告：您无权停用其他车间/工序的设备！");
         }
 
-        // 软删除逻辑
         device.IsActive = false;
 
         deviceRepository.Update(device);
@@ -57,6 +56,7 @@ public class DeactivateDeviceHandler(
         {
             await cacheService.RemoveAsync($"iiot:device:v1:{device.Id}", cancellationToken);
             await cacheService.RemoveAsync($"iiot:devices:process:v1:{device.ProcessId}", cancellationToken);
+            await cacheService.RemoveAsync("iiot:devices:v1:all-active", cancellationToken);
         }
 
         return Result.Success(true);

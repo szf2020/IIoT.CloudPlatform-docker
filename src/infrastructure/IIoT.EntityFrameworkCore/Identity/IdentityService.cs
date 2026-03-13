@@ -174,4 +174,16 @@ public class IdentityService(
             ? Result.Success()
             : Result.Failure(result.Errors.Select(e => e.Description).ToArray());
     }
+
+    public async Task<List<string>?> GetRolePermissionsAsync(string roleName)
+    {
+        var role = await roleManager.FindByNameAsync(roleName);
+        if (role == null) return null;
+
+        var claims = await roleManager.GetClaimsAsync(role);
+        return claims
+            .Where(c => c.Type == PermissionClaimType)
+            .Select(c => c.Value)
+            .ToList();
+    }
 }

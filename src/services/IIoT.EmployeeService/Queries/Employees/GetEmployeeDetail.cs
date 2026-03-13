@@ -5,7 +5,7 @@ using IIoT.SharedKernel.Messaging;
 using IIoT.SharedKernel.Repository;
 using IIoT.SharedKernel.Result;
 
-namespace IIoT.EmployeeService.Queries;
+namespace IIoT.EmployeeService.Queries.Employees;
 
 // 1. 定义纯净的展示 DTO
 public record EmployeeDetailDto(
