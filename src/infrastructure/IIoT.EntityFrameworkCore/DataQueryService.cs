@@ -1,11 +1,11 @@
-﻿using IIoT.Application.Contracts;
-using IIoT.Core.Employee.Aggregates.Employees;
+﻿using IIoT.Core.Employee.Aggregates.Employees;
 using IIoT.Core.Employee.Aggregates.MfgProcesses;
-using IIoT.Core.Production.Aggregates;
 using IIoT.Core.Production.Aggregates.Capacities;
+using IIoT.Core.Production.Aggregates.DeviceLogs;
 using IIoT.Core.Production.Aggregates.Devices;
 using IIoT.Core.Production.Aggregates.PassStations;
 using IIoT.Core.Production.Aggregates.Recipes;
+using IIoT.Services.Common.Contracts;
 using Microsoft.EntityFrameworkCore;
 
 namespace IIoT.EntityFrameworkCore;

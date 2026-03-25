@@ -1,4 +1,5 @@
 ﻿using IIoT.Core.Production.Aggregates;
+using IIoT.Core.Production.Aggregates.DeviceLogs;
 using IIoT.EntityFrameworkCore;
 using IIoT.Services.Common.Events;
 using MassTransit;

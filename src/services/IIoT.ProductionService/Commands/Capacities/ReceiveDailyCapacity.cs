@@ -1,9 +1,9 @@
-﻿using IIoT.Application.Contracts;
-using IIoT.Services.Common.Events;
+﻿using IIoT.Services.Common.Events;
 using IIoT.SharedKernel.Messaging;
 using IIoT.SharedKernel.Result;
 using AutoMapper;
 using MassTransit;
+using IIoT.Services.Common.Contracts;
 
 namespace IIoT.ProductionService.Commands.Capacities;
 

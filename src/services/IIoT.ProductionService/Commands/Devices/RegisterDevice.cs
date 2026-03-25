@@ -1,5 +1,4 @@
-﻿using IIoT.Application.Contracts;
-using IIoT.Core.Production.Aggregates.Devices;
+﻿using IIoT.Core.Production.Aggregates.Devices;
 using IIoT.Services.Common.Attributes;
 using IIoT.Services.Common.Contracts;
 using IIoT.SharedKernel.Messaging;

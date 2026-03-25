@@ -1,6 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
-using IIoT.Core.Production.Aggregates;
+using IIoT.Core.Production.Aggregates.DeviceLogs;
 
 namespace IIoT.EntityFrameworkCore.Configuration.Production;
 

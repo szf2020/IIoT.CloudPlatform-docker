@@ -2,7 +2,6 @@
 using IIoT.ProductionService.Commands.PassStations;
 using IIoT.ProductionService.Commands.Capacities;
 using IIoT.Services.Common.Events;
-using IIoT.Services.Common.Models;
 
 namespace IIoT.HttpApi.Profiles;
 
@@ -10,10 +9,7 @@ public class ProductionProfiles : Profile
 {
     public ProductionProfiles()
     {
-        // Request → Command
-        CreateMap<InjectionPassRequest, ReceiveInjectionPassCommand>();
-
-        // Command → Event
+        // Command → Event (在 Handler 里调用)
         CreateMap<ReceiveInjectionPassCommand, PassDataInjectionReceivedEvent>();
         CreateMap<ReceiveDailyCapacityCommand, DailyCapacityReceivedEvent>();
     }

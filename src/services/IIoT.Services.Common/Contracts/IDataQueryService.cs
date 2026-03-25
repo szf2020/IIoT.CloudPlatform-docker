@@ -1,12 +1,12 @@
 ﻿using IIoT.Core.Employee.Aggregates.Employees;
 using IIoT.Core.Employee.Aggregates.MfgProcesses;
-using IIoT.Core.Production.Aggregates;
 using IIoT.Core.Production.Aggregates.Capacities;
+using IIoT.Core.Production.Aggregates.DeviceLogs;
 using IIoT.Core.Production.Aggregates.Devices;
 using IIoT.Core.Production.Aggregates.PassStations;
 using IIoT.Core.Production.Aggregates.Recipes;
 
-namespace IIoT.Application.Contracts; // 注意替换成你实际的命名空间
+namespace IIoT.Services.Common.Contracts; // 注意替换成你实际的命名空间
 
 public interface IDataQueryService
 {

@@ -12,6 +12,7 @@
     <Project Path="src/hosts/IIoT.ServiceDefaults/IIoT.ServiceDefaults.csproj" Id="7d2ba11b-2783-40af-bf60-e79f3e1ee9ae" />
   </Folder>
   <Folder Name="/src/infrastructure/">
+    <Project Path="src/infrastructure/IIoT.Dapper/IIoT.Dapper.csproj" Id="49327aa2-e431-47aa-b24e-e1733df4a92f" />
     <Project Path="src/infrastructure/IIoT.EntityFrameworkCore/IIoT.EntityFrameworkCore.csproj" />
     <Project Path="src/infrastructure/IIoT.EventBus/IIoT.EventBus.csproj" Id="8c7e063e-583a-4455-a583-b4859865b12e" />
     <Project Path="src/infrastructure/IIoT.Infrastructure/IIoT.Infrastructure.csproj" Id="b34c78f5-1de7-4475-befc-f873d026351b" />

@@ -1,6 +1,6 @@
 ﻿using IIoT.SharedKernel.Domain;
 
-namespace IIoT.Core.Production.Aggregates;
+namespace IIoT.Core.Production.Aggregates.DeviceLogs;
 
 /// <summary>
 /// 聚合根：设备运行日志

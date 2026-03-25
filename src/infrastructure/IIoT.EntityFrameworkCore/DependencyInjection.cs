@@ -1,5 +1,4 @@
-﻿using IIoT.Application.Contracts;
-using IIoT.EntityFrameworkCore.Identity;
+﻿using IIoT.EntityFrameworkCore.Identity;
 using IIoT.EntityFrameworkCore.Repository;
 using IIoT.Services.Common.Contracts;
 using IIoT.Services.Common.Options;

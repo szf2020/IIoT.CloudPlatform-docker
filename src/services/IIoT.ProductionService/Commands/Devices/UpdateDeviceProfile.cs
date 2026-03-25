@@ -1,5 +1,4 @@
-﻿using IIoT.Application.Contracts;
-using IIoT.Core.Employee.Aggregates.Employees;
+﻿using IIoT.Core.Employee.Aggregates.Employees;
 using IIoT.Core.Production.Aggregates.Devices;
 using IIoT.Services.Common.Attributes;
 using IIoT.Services.Common.Contracts;
