@@ -13,7 +13,7 @@
       <label>选择设备</label>
       <select v-model="selectedDeviceId" class="filter-input device-select" @change="onDeviceChange">
         <option value="">请先选择设备</option>
-        <option v-for="d in allDevices" :key="d.id" :value="d.id">{{ d.deviceCode }} · {{ d.deviceName }}</option>
+        <option v-for="d in allDevices" :key="d.id" :value="d.id">{{ d.deviceName }}</option>
       </select>
     </div>
 

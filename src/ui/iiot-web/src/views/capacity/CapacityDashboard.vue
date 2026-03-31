@@ -14,7 +14,7 @@
         <label>筛选设备</label>
         <select v-model="filterDeviceId" class="filter-input" @change="onFilterChange">
           <option value="">全部设备</option>
-          <option v-for="d in allDevices" :key="d.id" :value="d.id">{{ d.deviceCode }} · {{ d.deviceName }}</option>
+          <option v-for="d in allDevices" :key="d.id" :value="d.id">{{ d.deviceName }}</option>
         </select>
       </div>
       <div class="filter-field">
@@ -49,7 +49,6 @@
           <tr v-for="r in records" :key="r.id" class="table-row">
             <td>
               <div class="device-cell">
-                <span class="device-code">{{ r.device_code }}</span>
                 <span class="device-name">{{ r.device_name }}</span>
               </div>
             </td>
@@ -65,7 +64,7 @@
               </div>
             </td>
             <td>
-              <button class="icon-btn trend" title="查看趋势" @click="loadTrend(r.device_id, r.device_code, r.device_name)">
+              <button class="icon-btn trend" title="查看趋势" @click="loadTrend(r.device_id, r.device_name)">
                 <svg viewBox="0 0 16 16" fill="none"><path d="M2 12l4-4 3 2 5-6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
               </button>
             </td>
@@ -99,7 +98,7 @@
           <div class="trend-header">
             <div>
               <span class="trend-title">产能趋势</span>
-              <span class="trend-subtitle">{{ trendDeviceCode }} · {{ trendDeviceName }} · 最近7天</span>
+              <span class="trend-subtitle">{{ trendDeviceName }} · 最近7天</span>
             </div>
             <button class="modal-close" @click="showTrend=false">✕</button>
           </div>
@@ -216,11 +215,9 @@ const goPage = (page: number) => { currentPage.value = page; fetchData(); };
 const showTrend = ref(false);
 const trendLoading = ref(false);
 const trendData = ref<any[]>([]);
-const trendDeviceCode = ref('');
 const trendDeviceName = ref('');
 
-const loadTrend = async (deviceId: string, deviceCode: string, deviceName: string) => {
-  trendDeviceCode.value = deviceCode;
+const loadTrend = async (deviceId: string, deviceName: string) => {
   trendDeviceName.value = deviceName;
   showTrend.value = true;
   trendLoading.value = true;

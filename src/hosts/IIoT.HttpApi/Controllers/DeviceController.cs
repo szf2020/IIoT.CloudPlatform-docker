@@ -55,7 +55,7 @@ public class DeviceController : ApiControllerBase
     }
 
     /// <summary>
-    /// 更新设备的业务基础档案 (设备名称、系统编号)
+    /// /// 更新设备的业务基础档案 (设备名称)
     /// </summary>
     [HttpPut("{id}")]
     public async Task<IActionResult> UpdateProfile([FromRoute] Guid id, [FromBody] UpdateDeviceProfileCommand command)

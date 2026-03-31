@@ -116,7 +116,7 @@
               <label class="form-label">专属机台 <span class="optional">（不选 = 工序通用配方）</span></label>
               <select class="form-input" v-model="createForm.DeviceId">
                 <option value="">通用配方（不绑定机台）</option>
-                <option v-for="d in allDevices" :key="d.id" :value="d.id">{{ d.deviceCode }} · {{ d.deviceName }}</option>
+                <option v-for="d in allDevices" :key="d.id" :value="d.id">{{ d.deviceName }}</option>
               </select>
             </div>
             <!-- 结构化参数表单 -->
@@ -325,7 +325,7 @@ const processNameMap = computed(() => {
 });
 const deviceNameMap = computed(() => {
   const m: Record<string, string> = {};
-  for (const d of allDevices.value) m[d.id] = `${d.deviceCode} · ${d.deviceName}`;
+  for (const d of allDevices.value) m[d.id] = d.deviceName;
   return m;
 });
 

@@ -19,12 +19,22 @@ public class DeviceLogConsumer(
 
         if (message.Logs.Count == 0) return;
 
-        var entities = message.Logs.Select(log => new DeviceLog(
-            log.DeviceId,
-            log.Level,
-            log.Message,
-            log.LogTime
-        )).ToList();
+        var entities = message.Logs.Select(log =>
+        {
+            // 1. 无论服务器当前在哪个时区，强制认定上位机传来的时间是“北京时间(UTC+8)”
+            var beijingOffset = TimeSpan.FromHours(8);
+            var localOffsetTime = new DateTimeOffset(log.LogTime, beijingOffset);
+
+            // 2. 转为绝对的 UTC 时间给 EF Core 存库
+            var absoluteUtcTime = localOffsetTime.UtcDateTime;
+
+            return new DeviceLog(
+                log.DeviceId,
+                log.Level,
+                log.Message,
+                absoluteUtcTime // 存入数据库，再也不会报错了
+            );
+        }).ToList();
 
         dbContext.DeviceLogs.AddRange(entities);
         await dbContext.SaveChangesAsync();

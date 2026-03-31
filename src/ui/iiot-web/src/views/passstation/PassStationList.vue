@@ -58,7 +58,7 @@
           <label>设备</label>
           <select v-model="filters.deviceId" class="filter-input">
             <option value="">请选择设备</option>
-            <option v-for="d in allDevices" :key="d.id" :value="d.id">{{ d.deviceCode }} · {{ d.deviceName }}</option>
+            <option v-for="d in allDevices" :key="d.id" :value="d.id">{{ d.deviceName }}</option>
           </select>
         </div>
         <div class="filter-field">
@@ -73,7 +73,7 @@
           <label>设备</label>
           <select v-model="filters.deviceId" class="filter-input">
             <option value="">请选择设备</option>
-            <option v-for="d in allDevices" :key="d.id" :value="d.id">{{ d.deviceCode }} · {{ d.deviceName }}</option>
+            <option v-for="d in allDevices" :key="d.id" :value="d.id">{{ d.deviceName }}</option>
           </select>
         </div>
         <div class="filter-field">

@@ -149,7 +149,6 @@
                   <label v-for="d in allDevices" :key="d.id" class="access-check-item">
                     <input type="checkbox" :value="d.id" v-model="onboardDeviceIds" />
                     <span class="ck-box"></span>
-                    <span class="ck-code">{{ d.deviceCode }}</span>
                     <span class="ck-name">{{ d.deviceName }}</span>
                   </label>
                   <div v-if="allDevices.length===0" class="access-empty">暂无设备，请先前往设备台账注册</div>
@@ -223,7 +222,6 @@
                   <label v-for="d in allDevices" :key="d.id" class="access-check-item">
                     <input type="checkbox" :value="d.id" v-model="accessForm.DeviceIds" />
                     <span class="ck-box"></span>
-                    <span class="ck-code">{{ d.deviceCode }}</span>
                     <span class="ck-name">{{ d.deviceName }}</span>
                   </label>
                   <div v-if="allDevices.length===0" class="access-empty">暂无设备数据</div>
@@ -395,7 +393,7 @@ const processNameMap = computed(() => {
 });
 const deviceNameMap = computed(() => {
   const m: Record<string, string> = {};
-  for (const d of allDevices.value) m[d.id] = `${d.deviceCode} · ${d.deviceName}`;
+  for (const d of allDevices.value) m[d.id] = d.deviceName;
   return m;
 });
 

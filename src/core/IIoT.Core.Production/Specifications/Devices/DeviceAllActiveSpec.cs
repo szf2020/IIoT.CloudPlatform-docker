@@ -13,7 +13,7 @@ public class DeviceAllActiveSpec : Specification<Device>
         // 只查启用状态的设备
         FilterCondition = d => d.IsActive;
 
-        // 按设备编号排序，保证前端下拉列表稳定有序
-        SetOrderBy(d => d.DeviceCode);
+        // 按设备名称排序，保证前端下拉列表稳定有序
+        SetOrderBy(d => d.DeviceName);
     }
 }

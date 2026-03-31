@@ -21,12 +21,11 @@
     <div class="table-wrap">
       <div v-if="loading" class="skeleton-rows"><div v-for="i in 5" :key="i" class="skeleton-row"><div class="skel skel-md"></div><div class="skel skel-sm"></div><div class="skel skel-sm"></div><div class="skel skel-lg"></div><div class="skel skel-sm"></div></div></div>
       <table v-else class="data-table">
-        <thead><tr><th>设备名称</th><th>设备编号</th><th>状态</th><th>所属工序</th><th style="text-align:right">操作</th></tr></thead>
+        <thead><tr><th>设备名称</th><th>状态</th><th>所属工序</th><th style="text-align:right">操作</th></tr></thead>
         <tbody>
-          <tr v-if="devices.length === 0"><td colspan="5" class="empty-cell"><div class="empty-state"><svg viewBox="0 0 48 48" fill="none"><rect x="4" y="10" width="40" height="28" rx="3" stroke="currentColor" stroke-width="1.5" opacity="0.3"/><path d="M14 24h20M24 18v12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" opacity="0.3"/></svg><p>暂无设备档案</p></div></td></tr>
+          <tr v-if="devices.length === 0"><td colspan="4" class="empty-cell"><div class="empty-state"><svg viewBox="0 0 48 48" fill="none"><rect x="4" y="10" width="40" height="28" rx="3" stroke="currentColor" stroke-width="1.5" opacity="0.3"/><path d="M14 24h20M24 18v12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" opacity="0.3"/></svg><p>暂无设备档案</p></div></td></tr>
           <tr v-for="device in devices" :key="device.id" class="table-row" @click="openDetailPanel(device)">
             <td><span class="device-name">{{ device.deviceName }}</span></td>
-            <td><span class="device-code">{{ device.deviceCode }}</span></td>
             <td><span class="status-tag" :class="device.isActive ? 'active' : 'inactive'"><span class="status-dot"></span>{{ device.isActive ? '运行中' : '已停用' }}</span></td>
             <td><span class="process-name-chip">{{ processNameMap[device.processId] || device.processId.substring(0, 8) + '…' }}</span></td>
             <td class="action-cell" @click.stop>
@@ -49,10 +48,7 @@
         <div class="modal">
           <div class="modal-header"><span class="modal-title">注册新设备</span><button class="modal-close" @click="showRegisterModal=false">✕</button></div>
           <div class="modal-body">
-            <div class="form-row">
-              <div class="form-field"><label class="form-label">设备名称 <span class="required">*</span></label><input class="form-input" v-model="registerForm.DeviceName" placeholder="如：1号叠片机" /></div>
-              <div class="form-field"><label class="form-label">设备编号 <span class="required">*</span></label><input class="form-input" v-model="registerForm.DeviceCode" placeholder="如：Stacker-01" /></div>
-            </div>
+            <div class="form-field"><label class="form-label">设备名称 <span class="required">*</span></label><input class="form-input" v-model="registerForm.DeviceName" placeholder="如：1号叠片机" /></div>
             <div class="form-field"><label class="form-label">MAC 地址 <span class="required">*</span></label><input class="form-input" v-model="registerForm.MacAddress" placeholder="如：00-1A-2B-3C-4D-5E" /></div>
             <div class="form-field">
               <label class="form-label">归属工序 <span class="required">*</span></label>
@@ -76,10 +72,7 @@
         <div class="modal">
           <div class="modal-header"><span class="modal-title">编辑设备档案</span><button class="modal-close" @click="showEditModal=false">✕</button></div>
           <div class="modal-body">
-            <div class="form-row">
-              <div class="form-field"><label class="form-label">设备名称 <span class="required">*</span></label><input class="form-input" v-model="editForm.DeviceName" /></div>
-              <div class="form-field"><label class="form-label">设备编号 <span class="required">*</span></label><input class="form-input" v-model="editForm.DeviceCode" /></div>
-            </div>
+            <div class="form-field"><label class="form-label">设备名称 <span class="required">*</span></label><input class="form-input" v-model="editForm.DeviceName" /></div>
           </div>
           <div class="modal-footer">
             <button class="btn btn-ghost" @click="showEditModal=false">取消</button>
@@ -98,7 +91,6 @@
             <div class="detail-status-banner" :class="selectedDevice.isActive ? 'active' : 'inactive'"><span class="status-dot"></span>{{ selectedDevice.isActive ? '设备运行中' : '设备已停用' }}</div>
             <div class="detail-section">
               <div class="detail-row"><span class="detail-label">设备名称</span><span class="detail-value">{{ selectedDevice.deviceName }}</span></div>
-              <div class="detail-row"><span class="detail-label">设备编号</span><span class="detail-value mono">{{ selectedDevice.deviceCode }}</span></div>
               <div class="detail-row"><span class="detail-label">设备 ID</span><span class="detail-value mono small">{{ selectedDevice.id }}</span></div>
               <div class="detail-row"><span class="detail-label">归属工序</span><span class="detail-value">{{ processNameMap[selectedDevice.processId] || selectedDevice.processId }}</span></div>
             </div>
@@ -166,14 +158,14 @@ const goPage = (page: number) => { currentPage.value = page; fetchList(); };
 
 // ── 注册 ──
 const showRegisterModal = ref(false);
-const registerForm = reactive({ DeviceName: '', DeviceCode: '', MacAddress: '', ProcessId: '' });
+const registerForm = reactive({ DeviceName: '', MacAddress: '', ProcessId: '' });
 const openRegisterModal = async () => {
-  Object.assign(registerForm, { DeviceName: '', DeviceCode: '', MacAddress: '', ProcessId: '' });
+  Object.assign(registerForm, { DeviceName: '', MacAddress: '', ProcessId: '' });
   showRegisterModal.value = true;
   await fetchProcesses();
 };
 const submitRegister = async () => {
-  if (!registerForm.DeviceName.trim() || !registerForm.DeviceCode.trim() || !registerForm.MacAddress.trim() || !registerForm.ProcessId) { alert('所有字段均为必填项'); return; }
+  if (!registerForm.DeviceName.trim() || !registerForm.MacAddress.trim() || !registerForm.ProcessId) { alert('所有字段均为必填项'); return; }
   submitting.value = true;
   try { await registerDeviceApi({ ...registerForm }); showRegisterModal.value = false; fetchList(); } catch { } finally { submitting.value = false; }
 };
@@ -181,12 +173,12 @@ const submitRegister = async () => {
 // ── 编辑 ──
 const showEditModal = ref(false);
 const editTarget = ref<DeviceListItemDto | null>(null);
-const editForm = reactive({ DeviceName: '', DeviceCode: '' });
-const openEditModal = (d: DeviceListItemDto) => { editTarget.value = d; editForm.DeviceName = d.deviceName; editForm.DeviceCode = d.deviceCode; showEditModal.value = true; };
+const editForm = reactive({ DeviceName: '' });
+const openEditModal = (d: DeviceListItemDto) => { editTarget.value = d; editForm.DeviceName = d.deviceName; showEditModal.value = true; };
 const submitEdit = async () => {
-  if (!editTarget.value || !editForm.DeviceName.trim() || !editForm.DeviceCode.trim()) { alert('名称和编号不能为空'); return; }
+  if (!editTarget.value || !editForm.DeviceName.trim()) { alert('名称不能为空'); return; }
   submitting.value = true;
-  try { await updateDeviceProfileApi(editTarget.value.id, { DeviceName: editForm.DeviceName, DeviceCode: editForm.DeviceCode }); showEditModal.value = false; fetchList(); } catch { } finally { submitting.value = false; }
+  try { await updateDeviceProfileApi(editTarget.value.id, { DeviceName: editForm.DeviceName }); showEditModal.value = false; fetchList(); } catch { } finally { submitting.value = false; }
 };
 
 // ── 详情 ──

@@ -12,7 +12,6 @@ export type { Pagination, PagedMetaData };
 export interface DeviceListItemDto {
   id: string;
   deviceName: string;
-  deviceCode: string;
   processId: string;
   isActive: boolean;
 }
@@ -21,7 +20,6 @@ export interface DeviceListItemDto {
 export interface DeviceSelectDto {
   id: string;
   deviceName: string;
-  deviceCode: string;
   processId: string;
   isActive: boolean;
 }
@@ -29,7 +27,6 @@ export interface DeviceSelectDto {
 /** 设备注册指令 — 对齐 RegisterDeviceCommand */
 export interface RegisterDevicePayload {
   DeviceName: string;
-  DeviceCode: string;
   MacAddress: string;
   ProcessId: string;
 }
@@ -37,7 +34,6 @@ export interface RegisterDevicePayload {
 /** 设备档案更新指令 — 对齐 UpdateDeviceProfileCommand */
 export interface UpdateDeviceProfilePayload {
   DeviceName: string;
-  DeviceCode: string;
 }
 
 /** 分页返回包装 */

@@ -30,17 +30,17 @@ public class CapacityQueryService(IDbConnectionFactory connectionFactory) : ICap
         }
 
         var dataSql = $@"
-            SELECT c.id, c.device_id, d.device_name, d.device_code,
-                   c.date, c.shift_code, c.total_count, c.ok_count, c.ng_count,
-                   CASE WHEN c.total_count > 0 
-                        THEN ROUND(c.ok_count * 100.0 / c.total_count, 2) 
-                        ELSE 0 END AS ok_rate,
-                   c.reported_at
-            FROM daily_capacity c
-            INNER JOIN devices d ON c.device_id = d.id
-            {conditions}
-            ORDER BY c.date DESC, d.device_code
-            OFFSET @Offset ROWS FETCH NEXT @PageSize ROWS ONLY";
+    SELECT c.id, c.device_id, d.device_name,
+           c.date, c.shift_code, c.total_count, c.ok_count, c.ng_count,
+           CASE WHEN c.total_count > 0 
+                THEN ROUND(c.ok_count * 100.0 / c.total_count, 2) 
+                ELSE 0 END AS ok_rate,
+           c.reported_at
+    FROM daily_capacity c
+    INNER JOIN devices d ON c.device_id = d.id
+    {conditions}
+    ORDER BY c.date DESC, d.device_name
+    OFFSET @Offset ROWS FETCH NEXT @PageSize ROWS ONLY";
 
         var countSql = $@"
             SELECT COUNT(*) 
