@@ -1,4 +1,4 @@
-﻿namespace IIoT.Services.Common.Events;
+namespace IIoT.Services.Common.Events;
 
 public record DailyCapacityReceivedEvent
 {

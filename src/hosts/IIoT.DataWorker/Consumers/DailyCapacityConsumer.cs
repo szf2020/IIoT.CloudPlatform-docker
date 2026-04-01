@@ -1,4 +1,4 @@
-﻿using IIoT.DataWorker.Commands;
+using IIoT.DataWorker.Commands;
 using IIoT.Services.Common.Events;
 using MassTransit;
 using MediatR;

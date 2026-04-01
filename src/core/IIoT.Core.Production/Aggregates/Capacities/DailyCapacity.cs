@@ -1,4 +1,4 @@
-﻿using IIoT.SharedKernel.Domain;
+using IIoT.SharedKernel.Domain;
 
 namespace IIoT.Core.Production.Aggregates.Capacities;
 

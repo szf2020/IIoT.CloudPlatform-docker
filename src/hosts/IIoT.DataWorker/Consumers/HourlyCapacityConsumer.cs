@@ -6,36 +6,27 @@ using Microsoft.Extensions.Logging;
 
 namespace IIoT.DataWorker.Consumers;
 
-/// <summary>
-/// 消费端：处理半小时槽位产能上报事件
-/// 通过 MediatR Pipeline 转发到 UpsertHourlyCapacityCommand，经 DistributedLockBehavior 保护
-/// </summary>
 public class HourlyCapacityConsumer(
-    ISender mediator,
+    ISender sender,
     ILogger<HourlyCapacityConsumer> logger)
     : IConsumer<HourlyCapacityReceivedEvent>
 {
     public async Task Consume(ConsumeContext<HourlyCapacityReceivedEvent> context)
     {
         var message = context.Message;
-        logger.LogInformation(
-            "接收到半小时槽位产能数据: DeviceId={DeviceId}, Date={Date}, Hour={Hour}, Minute={Minute}, ShiftCode={ShiftCode}",
-            message.DeviceId, message.Date, message.Hour, message.Minute, message.ShiftCode);
+        logger.LogInformation("接收到半小时产能: DeviceId={DeviceId}, Date={Date}, Shift={ShiftCode}, Time={Hour}:{Minute}",
+            message.DeviceId, message.Date, message.ShiftCode, message.Hour, message.Minute);
 
-        // 转发到 Upsert 命令，由 DistributedLockBehavior 保护并发
-        var command = new UpsertHourlyCapacityCommand(
-            message.DeviceId,
-            message.Date,
-            message.Hour,
-            message.Minute,
-            message.TimeLabel,
-            message.ShiftCode,
-            message.TotalCount,
-            message.OkCount,
-            message.NgCount);
-
-        await mediator.Send(command, context.CancellationToken);
-
-        logger.LogInformation("半小时槽位产能数据处理完成");
+        await sender.Send(new UpsertHourlyCapacityCommand(
+                message.DeviceId,
+                message.Date,
+                message.ShiftCode,
+                message.Hour,
+                message.Minute,
+                message.TimeLabel,
+                message.TotalCount,
+                message.OkCount,
+                message.NgCount),
+            context.CancellationToken);
     }
 }

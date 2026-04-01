@@ -12,6 +12,5 @@ public class ProductionProfiles : Profile
         // Command → Event (在 Handler 里调用)
         CreateMap<ReceiveInjectionPassCommand, PassDataInjectionReceivedEvent>();
         CreateMap<ReceiveDailyCapacityCommand, DailyCapacityReceivedEvent>();
-        CreateMap<ReceiveHourlyCapacityCommand, HourlyCapacityReceivedEvent>();
     }
 }

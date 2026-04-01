@@ -1,4 +1,4 @@
-﻿using IIoT.Services.Common.Events;
+using IIoT.Services.Common.Events;
 using IIoT.SharedKernel.Messaging;
 using IIoT.SharedKernel.Result;
 using AutoMapper;

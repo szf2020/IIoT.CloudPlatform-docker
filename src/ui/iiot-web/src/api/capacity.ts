@@ -14,43 +14,33 @@ export interface PagedList<T> {
 // 查询 API（云端后台产能看板）
 // ==========================================
 
-/** 所有机台产能分页查询 — GET /api/v1/capacity/daily */
-export const getDailyCapacityPagedApi = (params: {
-  pagination?: Pagination;
+/** 所有机台小时级产能分页查询 — GET /api/v1/Capacity/hourly */
+export const getHourlyCapacityPagedApi = (params: {
+  PageNumber?: number;
+  PageSize?: number;
   date?: string;
   deviceId?: string;
 }) => {
-  return http.get<PagedList<any>>('/capacity/daily', {
+  return http.get<PagedList<any>>('/capacity/hourly', {
     params: {
-      'pagination.PageNumber': params.pagination?.PageNumber ?? 1,
-      'pagination.PageSize': params.pagination?.PageSize ?? 10,
+      PageNumber: params.PageNumber ?? 1,
+      PageSize: params.PageSize ?? 10,
       date: params.date || undefined,
       deviceId: params.deviceId || undefined,
     },
   });
 };
 
-/** 单机台产能汇总查询 — GET /api/v1/capacity/summary */
-export const getDeviceCapacitySummaryApi = (params: {
+/** 单机台产能趋势查询 — GET /api/v1/Capacity/hourly/device/{deviceId} */
+export const getDeviceCapacityTrendApi = (params: {
   deviceId: string;
   startDate: string;
   endDate: string;
 }) => {
-  return http.get<any[]>('/capacity/summary', {
+  return http.get<any[]>(`/capacity/hourly/device/${params.deviceId}`, {
     params: {
-      deviceId: params.deviceId,
       startDate: params.startDate,
       endDate: params.endDate,
-    },
-  });
-};
-
-/** 单机台最近一个月产能数据（无需填日期范围） — GET /api/v1/capacity/device/{deviceId}/last-month */
-export const getCapacityLastMonthByDeviceApi = (deviceId: string, pagination?: { PageNumber?: number; PageSize?: number }) => {
-  return http.get<PagedList<any>>(`/capacity/device/${deviceId}/last-month`, {
-    params: {
-      'pagination.PageNumber': pagination?.PageNumber ?? 1,
-      'pagination.PageSize': pagination?.PageSize ?? 100,
     },
   });
 };

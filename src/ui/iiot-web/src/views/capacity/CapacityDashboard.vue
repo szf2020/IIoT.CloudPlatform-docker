@@ -37,6 +37,7 @@
           <tr>
             <th>设备</th>
             <th>日期</th>
+            <th>时间槽</th>
             <th>班次</th>
             <th>总产出</th>
             <th>良品</th>
@@ -49,22 +50,23 @@
           <tr v-for="r in records" :key="r.id" class="table-row">
             <td>
               <div class="device-cell">
-                <span class="device-name">{{ r.device_name }}</span>
+                <span class="device-name">{{ r.DeviceName }}</span>
               </div>
             </td>
             <td>{{ r.date }}</td>
-            <td><span class="shift-tag">{{ r.shift_code }}</span></td>
-            <td class="mono">{{ r.total_count }}</td>
-            <td class="mono ok-num">{{ r.ok_count }}</td>
-            <td class="mono ng-num">{{ r.ng_count }}</td>
+            <td><span class="time-label-tag">{{ r.timeLabel }}</span></td>
+            <td><span class="shift-tag">{{ r.ShiftCode }}</span></td>
+            <td class="mono">{{ r.TotalCount }}</td>
+            <td class="mono ok-num">{{ r.OkCount }}</td>
+            <td class="mono ng-num">{{ r.NgCount }}</td>
             <td>
               <div class="rate-bar-wrap">
-                <div class="rate-bar" :style="{ width: r.ok_rate + '%' }" :class="rateClass(r.ok_rate)"></div>
-                <span class="rate-text">{{ r.ok_rate }}%</span>
+                <div class="rate-bar" :style="{ width: r.okRate + '%' }" :class="rateClass(r.okRate)"></div>
+                <span class="rate-text">{{ r.okRate }}%</span>
               </div>
             </td>
             <td>
-              <button class="icon-btn trend" title="查看趋势" @click="loadTrend(r.device_id, r.device_name)">
+              <button class="icon-btn trend" title="查看趋势" @click="loadTrend(r.DeviceId, r.DeviceName)">
                 <svg viewBox="0 0 16 16" fill="none"><path d="M2 12l4-4 3 2 5-6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
               </button>
             </td>
@@ -113,13 +115,13 @@
             <!-- 简易柱状图 -->
             <div class="chart-area">
               <div class="chart-bars">
-                <div class="chart-col" v-for="item in trendData" :key="item.date">
+                <div class="chart-col" v-for="item in trendData" :key="(item.date ?? '') + (item.timeLabel ?? '')">
                   <div class="bar-stack">
-                    <div class="bar ok" :style="{ height: barHeight(item.ok_count) + 'px' }" :title="'良品: ' + item.ok_count"></div>
-                    <div class="bar ng" :style="{ height: barHeight(item.ng_count) + 'px' }" :title="'不良: ' + item.ng_count"></div>
+                    <div class="bar ok" :style="{ height: barHeight(item.OkCount) + 'px' }" :title="'良品: ' + item.OkCount"></div>
+                    <div class="bar ng" :style="{ height: barHeight(item.NgCount) + 'px' }" :title="'不良: ' + item.NgCount"></div>
                   </div>
-                  <span class="bar-label">{{ formatDate(item.date) }}</span>
-                  <span class="bar-total">{{ item.total_count }}</span>
+                  <span class="bar-label">{{ item.timeLabel ?? formatDate(item.date) }}</span>
+                  <span class="bar-total">{{ item.TotalCount }}</span>
                 </div>
               </div>
               <div class="chart-legend">
@@ -130,15 +132,15 @@
             <!-- 趋势数据表 -->
             <div class="trend-table">
               <div class="trend-table-header">
-                <span>日期</span><span>班次</span><span>总产出</span><span>良品</span><span>不良</span><span>良率</span>
+                <span>日期/时间槽</span><span>班次</span><span>总产出</span><span>良品</span><span>不良</span><span>良率</span>
               </div>
-              <div class="trend-table-row" v-for="item in trendData" :key="item.date + item.shift_code">
-                <span>{{ item.date }}</span>
-                <span><span class="shift-tag sm">{{ item.shift_code }}</span></span>
-                <span class="mono">{{ item.total_count }}</span>
-                <span class="mono ok-num">{{ item.ok_count }}</span>
-                <span class="mono ng-num">{{ item.ng_count }}</span>
-                <span class="mono" :class="rateClass(item.ok_rate)">{{ item.ok_rate }}%</span>
+              <div class="trend-table-row" v-for="item in trendData" :key="(item.date ?? '') + (item.timeLabel ?? '') + (item.ShiftCode ?? '')">
+                <span>{{ item.timeLabel ?? item.date }}</span>
+                <span><span class="shift-tag sm">{{ item.ShiftCode }}</span></span>
+                <span class="mono">{{ item.TotalCount }}</span>
+                <span class="mono ok-num">{{ item.OkCount }}</span>
+                <span class="mono ng-num">{{ item.NgCount }}</span>
+                <span class="mono" :class="rateClass(item.okRate)">{{ item.okRate }}%</span>
               </div>
             </div>
           </div>
@@ -155,7 +157,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
-import { getDailyCapacityPagedApi, getDeviceCapacitySummaryApi, getCapacityLastMonthByDeviceApi } from '../../api/capacity';
+import { getHourlyCapacityPagedApi, getDeviceCapacityTrendApi } from '../../api/capacity';
 import { getAllActiveDevicesApi, type DeviceSelectDto } from '../../api/device';
 import type { PagedMetaData } from '../../api/employee';
 
@@ -197,8 +199,9 @@ const clearFilters = () => { filterDeviceId.value = ''; filterDate.value = today
 const fetchData = async () => {
   loading.value = true;
   try {
-    const raw = await getDailyCapacityPagedApi({
-      pagination: { PageNumber: currentPage.value, PageSize: 10 },
+    const raw = await getHourlyCapacityPagedApi({
+      PageNumber: currentPage.value,
+      PageSize: 10,
       date: toUtcDateParam(filterDate.value),
       deviceId: filterDeviceId.value || undefined,
     }) as any;
@@ -236,18 +239,15 @@ const loadTrend = async (deviceId: string, deviceName: string) => {
   trendData.value = [];
 
   try {
-    if (trendPeriod.value === 'last-month') {
-      const raw = await getCapacityLastMonthByDeviceApi(deviceId, { PageNumber: 1, PageSize: 100 }) as any;
-      trendData.value = Array.isArray(raw?.items) ? raw.items : (Array.isArray(raw) ? raw : []);
-    } else {
-      const today = new Date();
-      const endDate = today.toISOString().split('T')[0];
-      const start = new Date(today);
-      start.setDate(start.getDate() - 6);
-      const startDate = start.toISOString().split('T')[0];
-      const raw = await getDeviceCapacitySummaryApi({ deviceId, startDate, endDate });
-      trendData.value = Array.isArray(raw) ? raw : [];
-    }
+    const today = new Date();
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const localDate = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+    const endDate = localDate(today);
+    const start = new Date(today);
+    start.setDate(start.getDate() - (trendPeriod.value === 'last-month' ? 29 : 6));
+    const startDate = localDate(start);
+    const raw = await getDeviceCapacityTrendApi({ deviceId, startDate, endDate });
+    trendData.value = Array.isArray(raw) ? raw : [];
   } catch {
     trendData.value = [];
   } finally {
@@ -262,7 +262,7 @@ const switchTrendPeriod = (period: '7days' | 'last-month') => {
 
 const trendMaxCount = computed(() => {
   if (trendData.value.length === 0) return 1;
-  return Math.max(...trendData.value.map((d: any) => d.total_count || 1), 1);
+  return Math.max(...trendData.value.map((d: any) => d.TotalCount || 1), 1);
 });
 
 const barHeight = (count: number) => {
@@ -318,6 +318,7 @@ select.filter-input option { background: #0f1525; color: #e0e4ef; }
 
 .shift-tag { font-size: 10px; background: rgba(0,229,255,0.08); color: rgba(0,229,255,0.7); padding: 2px 8px; border-radius: 3px; border: 1px solid rgba(0,229,255,0.15); font-weight: 500; }
 .shift-tag.sm { font-size: 10px; padding: 1px 6px; }
+.time-label-tag { font-size: 11px; background: rgba(120,80,255,0.1); color: rgba(160,130,255,0.9); padding: 2px 8px; border-radius: 3px; border: 1px solid rgba(120,80,255,0.2); font-family: 'Courier New', monospace; white-space: nowrap; }
 
 /* 良率条 */
 .rate-bar-wrap { display: flex; align-items: center; gap: 8px; min-width: 100px; }
