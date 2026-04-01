@@ -19,16 +19,6 @@ public class CapacityController : ApiControllerBase
     // ==========================================
 
     /// <summary>
-    /// 接收单日产能汇总
-    /// </summary>
-    [HttpPost("daily")]
-    public async Task<IActionResult> ReceiveDaily([FromBody] ReceiveDailyCapacityCommand command)
-    {
-        var result = await Sender.Send(command);
-        return result.IsSuccess ? Ok(result.Value) : BadRequest(result.Errors);
-    }
-
-    /// <summary>
     /// 接收半小时产能汇总（用于边缘端补传）
     /// </summary>
     [HttpPost("hourly")]
@@ -52,33 +42,6 @@ public class CapacityController : ApiControllerBase
         [FromQuery] Guid? deviceId = null)
     {
         var query = new GetDailyCapacityPagedQuery(pagination, date, deviceId);
-        var result = await Sender.Send(query);
-        return result.IsSuccess ? Ok(result.Value) : BadRequest(result.Errors);
-    }
-
-    /// <summary>
-    /// 单机台产能汇总查询（缓存优先，所有日期范围均有效）
-    /// </summary>
-    [HttpGet("summary")]
-    public async Task<IActionResult> GetDeviceSummary(
-        [FromQuery] Guid deviceId,
-        [FromQuery] DateOnly startDate,
-        [FromQuery] DateOnly endDate)
-    {
-        var query = new GetDeviceCapacitySummaryQuery(deviceId, startDate, endDate);
-        var result = await Sender.Send(query);
-        return result.IsSuccess ? Ok(result.Value) : BadRequest(result.Errors);
-    }
-
-    /// <summary>
-    /// 单机台最近一个月产能数据（无需填日期范围）
-    /// </summary>
-    [HttpGet("device/{deviceId}/last-month")]
-    public async Task<IActionResult> GetLastMonthByDevice(
-        [FromRoute] Guid deviceId,
-        [FromQuery] Pagination pagination)
-    {
-        var query = new GetCapacityLastMonthByDeviceQuery(deviceId, pagination);
         var result = await Sender.Send(query);
         return result.IsSuccess ? Ok(result.Value) : BadRequest(result.Errors);
     }
