@@ -44,3 +44,13 @@ export const getDeviceCapacitySummaryApi = (params: {
     },
   });
 };
+
+/** 单机台最近一个月产能数据（无需填日期范围） — GET /api/v1/capacity/device/{deviceId}/last-month */
+export const getCapacityLastMonthByDeviceApi = (deviceId: string, pagination?: { PageNumber?: number; PageSize?: number }) => {
+  return http.get<PagedList<any>>(`/capacity/device/${deviceId}/last-month`, {
+    params: {
+      'pagination.PageNumber': pagination?.PageNumber ?? 1,
+      'pagination.PageSize': pagination?.PageSize ?? 100,
+    },
+  });
+};

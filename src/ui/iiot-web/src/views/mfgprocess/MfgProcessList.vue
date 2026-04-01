@@ -189,11 +189,7 @@ const fetchList = async () => {
 
     if (raw && raw.metaData) {
       metaData.value = raw.metaData as PagedMetaData;
-      const items: MfgProcessListItemDto[] = [];
-      for (const k of Object.keys(raw)) {
-        if (!isNaN(Number(k))) items.push(raw[k] as MfgProcessListItemDto);
-      }
-      processes.value = items;
+      processes.value = Array.isArray(raw.items) ? raw.items as MfgProcessListItemDto[] : [];
     } else if (Array.isArray(raw)) {
       processes.value = raw as MfgProcessListItemDto[];
     }

@@ -115,4 +115,17 @@ public class PassStationController : ApiControllerBase
         var result = await Sender.Send(query);
         return result.IsSuccess ? Ok(result.Value) : BadRequest(result.Errors);
     }
+
+    /// <summary>
+    /// 按机台查最近 200 条注液过站数据（无需填时间范围）
+    /// </summary>
+    [HttpGet("injection/device/{deviceId}/latest")]
+    public async Task<IActionResult> GetInjectionLatest200ByDevice(
+        [FromRoute] Guid deviceId,
+        [FromQuery] Pagination pagination)
+    {
+        var query = new GetInjectionLatest200ByDeviceQuery(deviceId, pagination);
+        var result = await Sender.Send(query);
+        return result.IsSuccess ? Ok(result.Value) : BadRequest(result.Errors);
+    }
 }

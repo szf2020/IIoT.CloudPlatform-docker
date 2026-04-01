@@ -53,6 +53,12 @@ builder.Services.AddMassTransit(x =>
         cfg.ConcurrentMessageLimit = 1;
     });
 
+    // 半小时槽位产能：1 串行（+ 分布式锁双重保障多实例场景）
+    x.AddConsumer<HourlyCapacityConsumer>(cfg =>
+    {
+        cfg.ConcurrentMessageLimit = 1;
+    });
+
     x.UsingRabbitMq((context, cfg) =>
     {
         var connectionString = builder.Configuration.GetConnectionString("eventbus");

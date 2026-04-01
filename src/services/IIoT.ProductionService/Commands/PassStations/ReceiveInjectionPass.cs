@@ -39,8 +39,16 @@ public class ReceiveInjectionPassHandler(
         if (!deviceExists)
             return Result.Failure("数据接收失败：设备不存在或已停用");
 
-        // 2. 转换为事件并发布到 MQ
-        var @event = mapper.Map<PassDataInjectionReceivedEvent>(request);
+        // 2. 统一将边缘端时间戳转为 UTC（Npgsql timestamptz 只接受 Kind=Utc）
+        var utcRequest = request with
+        {
+            CompletedTime = request.CompletedTime.ToUniversalTime(),
+            PreInjectionTime = request.PreInjectionTime.ToUniversalTime(),
+            PostInjectionTime = request.PostInjectionTime.ToUniversalTime(),
+        };
+
+        // 3. 转换为事件并发布到 MQ
+        var @event = mapper.Map<PassDataInjectionReceivedEvent>(utcRequest);
         await publishEndpoint.Publish(@event, cancellationToken);
 
         return Result.Success(true);

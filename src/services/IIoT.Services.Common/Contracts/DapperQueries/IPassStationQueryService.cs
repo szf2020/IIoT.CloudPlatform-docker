@@ -24,4 +24,12 @@ public interface IPassStationQueryService
     /// 根据 ID 获取单条注液过站数据详情（含全部字段）
     /// </summary>
     Task<dynamic?> GetInjectionDetailAsync(Guid id, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 按机台查最近 200 条注液过站数据（分页，无需指定时间范围）
+    /// </summary>
+    Task<(List<dynamic> Items, int TotalCount)> GetInjectionLatest200ByDeviceAsync(
+        Guid deviceId,
+        Pagination pagination,
+        CancellationToken cancellationToken = default);
 }

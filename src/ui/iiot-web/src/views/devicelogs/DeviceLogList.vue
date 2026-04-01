@@ -183,12 +183,24 @@ const expandedId = ref<string | null>(null);
 const allDevices = ref<DeviceSelectDto[]>([]);
 const selectedDeviceId = ref('');
 
+// 取本地日期，不用 toISOString（UTC+8 早于 8:00 时 toISOString 会给昨天的 UTC 日期）
+const todayDate = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
+const todayStart = () => `${todayDate()}T00:00`;
+const todayEnd = () => `${todayDate()}T23:59`;
+// 将 datetime-local 字符串转成 UTC ISO（后端 timestamptz 只认 Kind=Utc）
+const toUtcIso = (local: string) => local ? new Date(local).toISOString() : '';
+// 将 date-only 字符串转成 UTC midnight ISO（后端 .NET 不再 -8h）
+const toUtcDateParam = (localDate: string) => localDate || '';
+
 const filters = reactive({
   level: '',
   keyword: '',
-  date: '',
-  startTime: '',
-  endTime: '',
+  date: todayDate(),
+  startTime: todayStart(),
+  endTime: todayEnd(),
 });
 
 const pageNumbers = computed(() => {
@@ -221,6 +233,8 @@ const switchMode = (mode: QueryMode) => {
   records.value = [];
   searched.value = false;
   currentPage.value = 1;
+  if (mode === 'date' || mode === 'date-keyword') filters.date = todayDate();
+  if (mode === 'time-range') { filters.startTime = todayStart(); filters.endTime = todayEnd(); }
 };
 
 const onDeviceChange = () => {
@@ -253,31 +267,21 @@ const fetchData = async () => {
         break;
       case 'date':
         if (!filters.date) { alert('请选择日期'); loading.value = false; return; }
-        raw = await getLogsByDeviceAndDateApi({ pagination, deviceId, date: filters.date });
+        raw = await getLogsByDeviceAndDateApi({ pagination, deviceId, date: toUtcDateParam(filters.date) });
         break;
       case 'time-range':
         if (!filters.startTime || !filters.endTime) { alert('请选择完整时间范围'); loading.value = false; return; }
-        raw = await getLogsByDeviceAndTimeRangeApi({ pagination, deviceId, startTime: filters.startTime, endTime: filters.endTime });
+        raw = await getLogsByDeviceAndTimeRangeApi({ pagination, deviceId, startTime: toUtcIso(filters.startTime), endTime: toUtcIso(filters.endTime) });
         break;
       case 'date-keyword':
         if (!filters.date || !filters.keyword.trim()) { alert('请选择日期并输入关键字'); loading.value = false; return; }
-        raw = await getLogsByDeviceDateAndKeywordApi({ pagination, deviceId, date: filters.date, keyword: filters.keyword });
+        raw = await getLogsByDeviceDateAndKeywordApi({ pagination, deviceId, date: toUtcDateParam(filters.date), keyword: filters.keyword });
         break;
     }
 
     if (raw && raw.metaData) {
       metaData.value = raw.metaData as PagedMetaData;
-      // API 返回结构为 { items: [...], metaData: {...} }
-      if (Array.isArray(raw.items)) {
-        records.value = raw.items;
-      } else {
-        // 兼容旧结构：直接读取数组
-        const items: any[] = [];
-        for (const k of Object.keys(raw)) {
-          if (!isNaN(Number(k))) items.push(raw[k]);
-        }
-        records.value = items;
-      }
+      records.value = Array.isArray(raw.items) ? raw.items : [];
     } else if (Array.isArray(raw)) {
       records.value = raw;
     } else {

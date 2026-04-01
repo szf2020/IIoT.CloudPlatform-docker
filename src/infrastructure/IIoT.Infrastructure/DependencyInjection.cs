@@ -8,6 +8,7 @@ using Microsoft.Extensions.Hosting;
 using StackExchange.Redis;
 using ZiggyCreatures.Caching.Fusion;
 using ZiggyCreatures.Caching.Fusion.Backplane.StackExchangeRedis;
+using ZiggyCreatures.Caching.Fusion.Serialization.SystemTextJson;
 
 namespace IIoT.Infrastructure;
 
@@ -27,6 +28,7 @@ public static class DependencyInjection
                 FailSafeMaxDuration = TimeSpan.FromHours(24),  // 失败转移最长持续 24 小时
                 FailSafeThrottleDuration = TimeSpan.FromSeconds(10),  // 防击穿：并发请求自动合并 10 秒
             })
+            .WithSystemTextJsonSerializer()
             .WithDistributedCache(provider => provider.GetRequiredService<IDistributedCache>())
             .WithStackExchangeRedisBackplane(opt => { }); // 连接由下方 Options 注入
 

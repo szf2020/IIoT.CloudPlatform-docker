@@ -353,11 +353,7 @@ const fetchList = async () => {
 
     if (raw && raw.metaData) {
       metaData.value = raw.metaData as PagedMetaData;
-      const items: RecipeListItemDto[] = [];
-      for (const k of Object.keys(raw)) {
-        if (!isNaN(Number(k))) items.push(raw[k] as RecipeListItemDto);
-      }
-      recipes.value = items;
+      recipes.value = Array.isArray(raw.items) ? raw.items as RecipeListItemDto[] : [];
     } else if (Array.isArray(raw)) {
       recipes.value = raw as RecipeListItemDto[];
     }

@@ -18,6 +18,11 @@ public class PassDataInjectionConsumer(
         logger.LogInformation("接收到注液过站数据: DeviceId={DeviceId}, Barcode={Barcode}",
             message.DeviceId, message.Barcode);
 
+        // 统一将边缘端时间戳规范为 UTC（Npgsql timestamptz 只接受 Kind=Utc）
+        var completedTime      = message.CompletedTime.ToUniversalTime();
+        var preInjectionTime   = message.PreInjectionTime.ToUniversalTime();
+        var postInjectionTime  = message.PostInjectionTime.ToUniversalTime();
+
         // 1. 校验设备是否存在且激活
         var deviceExists = await dbContext.Devices
             .AsNoTracking()
@@ -34,7 +39,7 @@ public class PassDataInjectionConsumer(
             .AsNoTracking()
             .AnyAsync(p => p.DeviceId == message.DeviceId
                         && p.Barcode == message.Barcode
-                        && p.CompletedTime == message.CompletedTime);
+                        && p.CompletedTime == completedTime);
 
         if (duplicate)
         {
@@ -46,11 +51,11 @@ public class PassDataInjectionConsumer(
         var record = new PassDataInjection(
             message.DeviceId,
             message.CellResult,
-            message.CompletedTime,
+            completedTime,
             message.Barcode,
-            message.PreInjectionTime,
+            preInjectionTime,
             message.PreInjectionWeight,
-            message.PostInjectionTime,
+            postInjectionTime,
             message.PostInjectionWeight,
             message.InjectionVolume);
 

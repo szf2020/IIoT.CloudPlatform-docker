@@ -26,6 +26,7 @@ public class IIoTDbContext(DbContextOptions<IIoTDbContext> options)
 
     // === 产能汇总 ===
     public DbSet<DailyCapacity> DailyCapacities => Set<DailyCapacity>();
+    public DbSet<HourlyCapacity> HourlyCapacities => Set<HourlyCapacity>();
 
     // === 设备日志 ===
     public DbSet<DeviceLog> DeviceLogs => Set<DeviceLog>();

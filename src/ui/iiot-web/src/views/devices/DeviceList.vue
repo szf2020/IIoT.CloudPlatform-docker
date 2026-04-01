@@ -150,8 +150,10 @@ const fetchList = async () => {
   loading.value = true;
   try {
     const raw = await getDevicePagedListApi({ PaginationParams: { PageNumber: currentPage.value, PageSize: 10 }, Keyword: keyword.value || undefined }) as unknown as Record<string, unknown>;
-    if (raw && raw.metaData) { metaData.value = raw.metaData as PagedMetaData; const items: DeviceListItemDto[] = []; for (const k of Object.keys(raw)) { if (!isNaN(Number(k))) items.push(raw[k] as DeviceListItemDto); } devices.value = items; }
-    else if (Array.isArray(raw)) { devices.value = raw as DeviceListItemDto[]; }
+    if (raw && raw.metaData) {
+      metaData.value = raw.metaData as PagedMetaData;
+      devices.value = Array.isArray(raw.items) ? raw.items as DeviceListItemDto[] : [];
+    } else if (Array.isArray(raw)) { devices.value = raw as DeviceListItemDto[]; }
   } catch { devices.value = []; } finally { loading.value = false; }
 };
 const goPage = (page: number) => { currentPage.value = page; fetchList(); };

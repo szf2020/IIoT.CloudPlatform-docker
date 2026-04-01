@@ -19,10 +19,10 @@ public class CapacityController : ApiControllerBase
     // ==========================================
 
     /// <summary>
-    /// 接收单日产能汇总
+    /// 接收半小时槽位产能汇总（新版）
     /// </summary>
-    [HttpPost("daily")]
-    public async Task<IActionResult> ReceiveDaily([FromBody] ReceiveDailyCapacityCommand command)
+    [HttpPost("hourly")]
+    public async Task<IActionResult> ReceiveHourly([FromBody] ReceiveHourlyCapacityCommand command)
     {
         var result = await Sender.Send(command);
         return result.IsSuccess ? Ok(result.Value) : BadRequest(result.Errors);
@@ -33,29 +33,34 @@ public class CapacityController : ApiControllerBase
     // ==========================================
 
     /// <summary>
-    /// 所有机台产能分页查询（延迟加载，带设备名称和良率，缓存优先）
+    /// 半小时槽位产能分页查询（缓存优先，带设备名称和良率）
     /// </summary>
-    [HttpGet("daily")]
-    public async Task<IActionResult> GetDailyPaged(
+    [HttpGet("hourly")]
+    public async Task<IActionResult> GetHourlyPaged(
         [FromQuery] Pagination pagination,
         [FromQuery] DateOnly? date = null,
         [FromQuery] Guid? deviceId = null)
     {
-        var query = new GetDailyCapacityPagedQuery(pagination, date, deviceId);
+        var query = new GetHourlyCapacityPagedQuery(pagination, date, deviceId);
         var result = await Sender.Send(query);
         return result.IsSuccess ? Ok(result.Value) : BadRequest(result.Errors);
     }
 
     /// <summary>
-    /// 单机台产能汇总查询（缓存优先，所有日期范围均有效）
+    /// 单机台半小时槽位产能汇总查询（缓存优先，所有日期范围均有效）
     /// </summary>
-    [HttpGet("summary")]
-    public async Task<IActionResult> GetDeviceSummary(
-        [FromQuery] Guid deviceId,
-        [FromQuery] DateOnly startDate,
-        [FromQuery] DateOnly endDate)
+    [HttpGet("hourly/device/{deviceId}")]
+    public async Task<IActionResult> GetHourlySummaryByDevice(
+        [FromRoute] Guid deviceId,
+        [FromQuery] DateOnly? startDate = null,
+        [FromQuery] DateOnly? endDate = null)
     {
-        var query = new GetDeviceCapacitySummaryQuery(deviceId, startDate, endDate);
+        var today = DateOnly.FromDateTime(DateTime.Now);
+        var query = new GetHourlyCapacityByDeviceQuery(
+            deviceId,
+            startDate ?? today.AddMonths(-1),
+            endDate ?? today);
+
         var result = await Sender.Send(query);
         return result.IsSuccess ? Ok(result.Value) : BadRequest(result.Errors);
     }

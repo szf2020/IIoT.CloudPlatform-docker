@@ -426,9 +426,7 @@ const fetchList = async () => {
     }) as unknown as Record<string, unknown>;
     if (raw && raw.metaData) {
       metaData.value = raw.metaData as PagedMetaData;
-      const items: EmployeeListItemDto[] = [];
-      for (const k of Object.keys(raw)) { if (!isNaN(Number(k))) items.push(raw[k] as EmployeeListItemDto); }
-      employees.value = items;
+      employees.value = Array.isArray(raw.items) ? raw.items as EmployeeListItemDto[] : [];
     } else if (Array.isArray(raw)) {
       employees.value = raw as EmployeeListItemDto[];
     }

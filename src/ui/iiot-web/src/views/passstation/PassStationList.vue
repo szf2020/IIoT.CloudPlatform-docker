@@ -86,6 +86,18 @@
         </div>
       </template>
 
+      <!-- 模式5: 设备最近200条 -->
+      <template v-if="currentMode === 'device-latest'">
+        <div class="filter-field">
+          <label>设备</label>
+          <select v-model="filters.deviceId" class="filter-input">
+            <option value="">请选择设备</option>
+            <option v-for="d in allDevices" :key="d.id" :value="d.id">{{ d.deviceName }}</option>
+          </select>
+        </div>
+        <span class="mode-hint">无需输入时间，直接查询该设备最近 200 条过站记录</span>
+      </template>
+
       <button class="btn btn-primary search-btn" @click="doSearch">
         <svg viewBox="0 0 16 16" fill="none"><circle cx="6.5" cy="6.5" r="4.5" stroke="currentColor" stroke-width="1.3"/><path d="M10 10l3 3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
         查询
@@ -195,19 +207,21 @@ import {
   getInjectionByTimeAndProcessApi,
   getInjectionByDeviceAndBarcodeApi,
   getInjectionByDeviceAndTimeApi,
+  getInjectionLatest200ByDeviceApi,
   getInjectionDetailApi,
 } from '../../api/passStation';
 import { getAllMfgProcessesApi, type MfgProcessSelectDto } from '../../api/mfgProcess';
 import { getAllActiveDevicesApi, type DeviceSelectDto } from '../../api/device';
 import type { PagedMetaData } from '../../api/employee';
 
-type QueryMode = 'barcode-process' | 'time-process' | 'device-barcode' | 'device-time';
+type QueryMode = 'barcode-process' | 'time-process' | 'device-barcode' | 'device-time' | 'device-latest';
 
 const queryModes = [
   { key: 'barcode-process' as QueryMode, label: '条码 + 工序', icon: '<svg viewBox="0 0 16 16" fill="none"><rect x="2" y="3" width="12" height="2" rx="0.5" stroke="currentColor" stroke-width="1.1"/><rect x="2" y="7" width="8" height="2" rx="0.5" stroke="currentColor" stroke-width="1.1"/><rect x="2" y="11" width="10" height="2" rx="0.5" stroke="currentColor" stroke-width="1.1"/></svg>' },
   { key: 'time-process' as QueryMode, label: '时间 + 工序', icon: '<svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.1"/><path d="M8 5v3.5l2.5 1.5" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/></svg>' },
   { key: 'device-barcode' as QueryMode, label: '设备 + 条码', icon: '<svg viewBox="0 0 16 16" fill="none"><rect x="2" y="4" width="12" height="8" rx="1.5" stroke="currentColor" stroke-width="1.1"/><circle cx="8" cy="8" r="2" stroke="currentColor" stroke-width="1.1"/></svg>' },
   { key: 'device-time' as QueryMode, label: '设备 + 时间', icon: '<svg viewBox="0 0 16 16" fill="none"><rect x="2" y="4" width="8" height="8" rx="1.5" stroke="currentColor" stroke-width="1.1"/><path d="M12 6v4l1.5 1" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/></svg>' },
+  { key: 'device-latest' as QueryMode, label: '设备最近200条', icon: '<svg viewBox="0 0 16 16" fill="none"><path d="M3 4h10M3 8h10M3 12h6" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/><circle cx="13" cy="12" r="2" stroke="currentColor" stroke-width="1.1"/></svg>' },
 ];
 
 const currentMode = ref<QueryMode>('barcode-process');
@@ -220,12 +234,15 @@ const metaData = ref<PagedMetaData>({ totalCount: 0, pageSize: 10, currentPage: 
 const allProcesses = ref<MfgProcessSelectDto[]>([]);
 const allDevices = ref<DeviceSelectDto[]>([]);
 
+const todayStart = () => { const d = new Date(); return `${d.toISOString().split('T')[0]}T00:00`; };
+const todayEnd = () => { const d = new Date(); return `${d.toISOString().split('T')[0]}T23:59`; };
+
 const filters = reactive({
   processId: '',
   deviceId: '',
   barcode: '',
-  startTime: '',
-  endTime: '',
+  startTime: todayStart(),
+  endTime: todayEnd(),
 });
 
 const pageNumbers = computed(() => {
@@ -241,6 +258,11 @@ const switchMode = (mode: QueryMode) => {
   records.value = [];
   searched.value = false;
   currentPage.value = 1;
+  // 切换到时间模式时重置为今天
+  if (mode === 'time-process' || mode === 'device-time') {
+    filters.startTime = todayStart();
+    filters.endTime = todayEnd();
+  }
 };
 
 const formatTime = (t: string) => {
@@ -249,6 +271,12 @@ const formatTime = (t: string) => {
     const d = new Date(t);
     return d.toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' });
   } catch { return t; }
+};
+
+/** 将 datetime-local 的本地时间字符串转换为 UTC ISO 8601（后端 timestamptz 以 UTC 存储） */
+const toUtcIso = (localStr: string): string => {
+  if (!localStr) return localStr;
+  return new Date(localStr).toISOString();
 };
 
 const doSearch = async () => {
@@ -270,7 +298,7 @@ const fetchData = async () => {
         break;
       case 'time-process':
         if (!filters.processId || !filters.startTime || !filters.endTime) { alert('请选择工序和时间范围'); loading.value = false; return; }
-        raw = await getInjectionByTimeAndProcessApi({ pagination, processId: filters.processId, startTime: filters.startTime, endTime: filters.endTime });
+        raw = await getInjectionByTimeAndProcessApi({ pagination, processId: filters.processId, startTime: toUtcIso(filters.startTime), endTime: toUtcIso(filters.endTime) });
         break;
       case 'device-barcode':
         if (!filters.deviceId || !filters.barcode.trim()) { alert('请选择设备并输入条码'); loading.value = false; return; }
@@ -278,17 +306,17 @@ const fetchData = async () => {
         break;
       case 'device-time':
         if (!filters.deviceId || !filters.startTime || !filters.endTime) { alert('请选择设备和时间范围'); loading.value = false; return; }
-        raw = await getInjectionByDeviceAndTimeApi({ pagination, deviceId: filters.deviceId, startTime: filters.startTime, endTime: filters.endTime });
+        raw = await getInjectionByDeviceAndTimeApi({ pagination, deviceId: filters.deviceId, startTime: toUtcIso(filters.startTime), endTime: toUtcIso(filters.endTime) });
+        break;
+      case 'device-latest':
+        if (!filters.deviceId) { alert('请选择设备'); loading.value = false; return; }
+        raw = await getInjectionLatest200ByDeviceApi({ pagination, deviceId: filters.deviceId });
         break;
     }
 
     if (raw && raw.metaData) {
       metaData.value = raw.metaData as PagedMetaData;
-      const items: any[] = [];
-      for (const k of Object.keys(raw)) {
-        if (!isNaN(Number(k))) items.push(raw[k]);
-      }
-      records.value = items;
+      records.value = Array.isArray(raw.items) ? raw.items : [];
     } else if (Array.isArray(raw)) {
       records.value = raw;
     } else {
@@ -356,6 +384,7 @@ select.filter-input { appearance: none; background-image: url("data:image/svg+xm
 select.filter-input option { background: #0f1525; color: #e0e4ef; }
 .search-btn { flex-shrink: 0; height: 36px; }
 .search-btn svg { width: 14px; height: 14px; }
+.mode-hint { font-size: 12px; color: rgba(255,255,255,0.3); align-self: center; padding: 0 4px; }
 
 /* 表格 */
 .table-wrap { background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06); border-radius: 4px; overflow: hidden; }

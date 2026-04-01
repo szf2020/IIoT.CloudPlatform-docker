@@ -84,4 +84,48 @@ public class PassStationQueryService(IDbConnectionFactory connectionFactory) : I
 
         return await connection.QuerySingleOrDefaultAsync(command);
     }
+
+    public async Task<(List<dynamic> Items, int TotalCount)> GetInjectionLatest200ByDeviceAsync(
+        Guid deviceId,
+        Pagination pagination,
+        CancellationToken cancellationToken = default)
+    {
+        using var connection = connectionFactory.CreateConnection();
+
+        // CTE 先锁定该机台最新 200 条，外层再分页，前端最多翻到第 200 条
+        var dataSql = @"
+            WITH latest AS (
+                SELECT id, device_id, barcode, cell_result,
+                       pre_injection_time, pre_injection_weight,
+                       post_injection_time, post_injection_weight,
+                       injection_volume, completed_time, received_at,
+                       ROW_NUMBER() OVER (ORDER BY completed_time DESC) AS rn
+                FROM pass_data_injection
+                WHERE device_id = @DeviceId
+            )
+            SELECT id, device_id, barcode, cell_result,
+                   pre_injection_time, pre_injection_weight,
+                   post_injection_time, post_injection_weight,
+                   injection_volume, completed_time, received_at
+            FROM latest
+            WHERE rn <= 200
+            ORDER BY completed_time DESC
+            OFFSET @Offset ROWS FETCH NEXT @PageSize ROWS ONLY";
+
+        var countSql = @"
+            SELECT LEAST(COUNT(*), 200)
+            FROM pass_data_injection
+            WHERE device_id = @DeviceId";
+
+        var offset = (pagination.PageNumber - 1) * pagination.PageSize;
+        var parameters = new { DeviceId = deviceId, Offset = offset, PageSize = pagination.PageSize };
+
+        var command      = new CommandDefinition(dataSql, parameters, cancellationToken: cancellationToken);
+        var countCommand = new CommandDefinition(countSql, new { DeviceId = deviceId }, cancellationToken: cancellationToken);
+
+        var items      = (await connection.QueryAsync(command)).ToList();
+        var totalCount = await connection.ExecuteScalarAsync<int>(countCommand);
+
+        return (items, totalCount);
+    }
 }

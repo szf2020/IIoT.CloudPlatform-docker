@@ -98,7 +98,11 @@
           <div class="trend-header">
             <div>
               <span class="trend-title">产能趋势</span>
-              <span class="trend-subtitle">{{ trendDeviceName }} · 最近7天</span>
+              <span class="trend-subtitle">{{ trendDeviceName }} · {{ trendPeriod === 'last-month' ? '最近一个月' : '最近7天' }}</span>
+            </div>
+            <div class="trend-period-toggle">
+              <button class="period-btn" :class="{ active: trendPeriod === '7days' }" @click="switchTrendPeriod('7days')">7天</button>
+              <button class="period-btn" :class="{ active: trendPeriod === 'last-month' }" @click="switchTrendPeriod('last-month')">30天</button>
             </div>
             <button class="modal-close" @click="showTrend=false">✕</button>
           </div>
@@ -140,7 +144,7 @@
           </div>
           <div class="trend-body" v-else>
             <div class="empty-state" style="padding-top: 40px;">
-              <p>该设备最近7天暂无产能数据</p>
+              <p>该设备暂无产能数据</p>
             </div>
           </div>
         </div>
@@ -151,7 +155,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
-import { getDailyCapacityPagedApi, getDeviceCapacitySummaryApi } from '../../api/capacity';
+import { getDailyCapacityPagedApi, getDeviceCapacitySummaryApi, getCapacityLastMonthByDeviceApi } from '../../api/capacity';
 import { getAllActiveDevicesApi, type DeviceSelectDto } from '../../api/device';
 import type { PagedMetaData } from '../../api/employee';
 
@@ -162,7 +166,16 @@ const metaData = ref<PagedMetaData>({ totalCount: 0, pageSize: 10, currentPage: 
 
 const allDevices = ref<DeviceSelectDto[]>([]);
 const filterDeviceId = ref('');
-const filterDate = ref('');
+
+// 取本地日期 YYYY-MM-DD（避免 toISOString 在 UTC+8 早于 8:00 时取到昨天）
+const todayLocalDate = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
+// 发给后端时加 T00:00:00.000Z，后端 .NET 解析到 Kind=Utc，不会再 -8h
+const toUtcDateParam = (localDate: string) => localDate || undefined;
+
+const filterDate = ref(todayLocalDate());
 
 const pageNumbers = computed(() => {
   const total = metaData.value.totalPages;
@@ -179,24 +192,20 @@ const rateClass = (rate: number) => {
 };
 
 const onFilterChange = () => { currentPage.value = 1; fetchData(); };
-const clearFilters = () => { filterDeviceId.value = ''; filterDate.value = ''; currentPage.value = 1; fetchData(); };
+const clearFilters = () => { filterDeviceId.value = ''; filterDate.value = todayLocalDate(); currentPage.value = 1; fetchData(); };
 
 const fetchData = async () => {
   loading.value = true;
   try {
     const raw = await getDailyCapacityPagedApi({
       pagination: { PageNumber: currentPage.value, PageSize: 10 },
-      date: filterDate.value || undefined,
+      date: toUtcDateParam(filterDate.value),
       deviceId: filterDeviceId.value || undefined,
     }) as any;
 
     if (raw && raw.metaData) {
       metaData.value = raw.metaData as PagedMetaData;
-      const items: any[] = [];
-      for (const k of Object.keys(raw)) {
-        if (!isNaN(Number(k))) items.push(raw[k]);
-      }
-      records.value = items;
+      records.value = Array.isArray(raw.items) ? raw.items : [];
     } else if (Array.isArray(raw)) {
       records.value = raw;
     } else {
@@ -216,27 +225,39 @@ const showTrend = ref(false);
 const trendLoading = ref(false);
 const trendData = ref<any[]>([]);
 const trendDeviceName = ref('');
+const trendDeviceId = ref('');
+const trendPeriod = ref<'7days' | 'last-month'>('7days');
 
 const loadTrend = async (deviceId: string, deviceName: string) => {
   trendDeviceName.value = deviceName;
+  trendDeviceId.value = deviceId;
   showTrend.value = true;
   trendLoading.value = true;
   trendData.value = [];
 
-  const today = new Date();
-  const endDate = today.toISOString().split('T')[0];
-  const start = new Date(today);
-  start.setDate(start.getDate() - 6);
-  const startDate = start.toISOString().split('T')[0];
-
   try {
-    const raw = await getDeviceCapacitySummaryApi({ deviceId, startDate, endDate });
-    trendData.value = Array.isArray(raw) ? raw : [];
+    if (trendPeriod.value === 'last-month') {
+      const raw = await getCapacityLastMonthByDeviceApi(deviceId, { PageNumber: 1, PageSize: 100 }) as any;
+      trendData.value = Array.isArray(raw?.items) ? raw.items : (Array.isArray(raw) ? raw : []);
+    } else {
+      const today = new Date();
+      const endDate = today.toISOString().split('T')[0];
+      const start = new Date(today);
+      start.setDate(start.getDate() - 6);
+      const startDate = start.toISOString().split('T')[0];
+      const raw = await getDeviceCapacitySummaryApi({ deviceId, startDate, endDate });
+      trendData.value = Array.isArray(raw) ? raw : [];
+    }
   } catch {
     trendData.value = [];
   } finally {
     trendLoading.value = false;
   }
+};
+
+const switchTrendPeriod = (period: '7days' | 'last-month') => {
+  trendPeriod.value = period;
+  loadTrend(trendDeviceId.value, trendDeviceName.value);
 };
 
 const trendMaxCount = computed(() => {
@@ -339,10 +360,14 @@ select.filter-input option { background: #0f1525; color: #e0e4ef; }
 .detail-overlay { position: fixed; inset: 0; z-index: 100; background: rgba(0,0,0,0.5); display: flex; align-items: stretch; justify-content: flex-end; }
 .trend-panel { width: 520px; background: #0f1525; border-left: 1px solid rgba(255,255,255,0.08); display: flex; flex-direction: column; animation: slideIn 0.22s cubic-bezier(0.4,0,0.2,1); }
 @keyframes slideIn { from { transform: translateX(100%); } to { transform: translateX(0); } }
-.trend-header { display: flex; align-items: center; justify-content: space-between; padding: 18px 22px; border-bottom: 1px solid rgba(255,255,255,0.06); }
+.trend-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 18px 22px; border-bottom: 1px solid rgba(255,255,255,0.06); }
 .trend-title { font-size: 15px; font-weight: 600; color: #fff; display: block; }
 .trend-subtitle { font-size: 12px; color: rgba(255,255,255,0.35); display: block; margin-top: 2px; }
-.modal-close { background: none; border: none; color: rgba(255,255,255,0.3); font-size: 16px; cursor: pointer; }
+.trend-period-toggle { display: flex; gap: 4px; }
+.period-btn { padding: 4px 10px; border-radius: 3px; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.03); color: rgba(255,255,255,0.4); font-size: 12px; cursor: pointer; transition: all 0.15s; }
+.period-btn:hover { border-color: rgba(0,229,255,0.25); color: rgba(255,255,255,0.7); }
+.period-btn.active { background: rgba(0,229,255,0.1); border-color: rgba(0,229,255,0.35); color: #00e5ff; }
+.modal-close { background: none; border: none; color: rgba(255,255,255,0.3); font-size: 16px; cursor: pointer; flex-shrink: 0; }
 .modal-close:hover { color: rgba(255,255,255,0.7); }
 .trend-body { padding: 20px 22px; flex: 1; overflow-y: auto; }
 .detail-loading { display: flex; flex-direction: column; align-items: center; gap: 14px; padding-top: 60px; color: rgba(255,255,255,0.3); font-size: 13px; }
@@ -351,7 +376,7 @@ select.filter-input option { background: #0f1525; color: #e0e4ef; }
 
 /* 柱状图 */
 .chart-area { margin-bottom: 24px; }
-.chart-bars { display: flex; align-items: flex-end; justify-content: space-around; height: 180px; padding: 0 8px; gap: 8px; border-bottom: 1px solid rgba(255,255,255,0.08); }
+.chart-bars { display: flex; align-items: flex-end; justify-content: space-around; height: 180px; padding: 0 8px; gap: 8px; border-bottom: 1px solid rgba(255,255,255,0.08); overflow-x: auto; }
 .chart-col { display: flex; flex-direction: column; align-items: center; gap: 6px; flex: 1; }
 .bar-stack { display: flex; flex-direction: column-reverse; align-items: center; }
 .bar { width: 28px; border-radius: 3px 3px 0 0; transition: height 0.4s ease; }

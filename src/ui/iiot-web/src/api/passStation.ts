@@ -86,3 +86,16 @@ export const getInjectionByDeviceAndTimeApi = (params: {
 export const getInjectionDetailApi = (id: string) => {
   return http.get<any>(`/passstation/injection/${id}`);
 };
+
+/** 按机台查最近200条注液过站数据（无需填时间范围） — GET /api/v1/passstation/injection/device/{deviceId}/latest */
+export const getInjectionLatest200ByDeviceApi = (params: {
+  pagination?: Pagination;
+  deviceId: string;
+}) => {
+  return http.get<PagedList<any>>(`/passstation/injection/device/${params.deviceId}/latest`, {
+    params: {
+      'pagination.PageNumber': params.pagination?.PageNumber ?? 1,
+      'pagination.PageSize': params.pagination?.PageSize ?? 20,
+    },
+  });
+};
