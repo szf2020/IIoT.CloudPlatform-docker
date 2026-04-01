@@ -11,6 +11,7 @@ namespace IIoT.EmployeeService.Commands.MfgProcesses;
 /// 业务指令：创建新的制造工序
 /// </summary>
 [AuthorizeRequirement("Process.Create")]
+[DistributedLock("iiot:lock:mfg-process-code:{ProcessCode}", TimeoutSeconds = 5)]
 public record CreateMfgProcessCommand(
     string ProcessCode,
     string ProcessName

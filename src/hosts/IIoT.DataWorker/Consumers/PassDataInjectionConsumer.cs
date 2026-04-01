@@ -55,7 +55,7 @@ public class PassDataInjectionConsumer(
             message.InjectionVolume);
 
         dbContext.PassDataInjection.Add(record);
-        await dbContext.SaveChangesAsync();
+        await dbContext.SaveChangesAsync(context.CancellationToken);
 
         logger.LogInformation("注液过站数据写入成功: Id={Id}, Barcode={Barcode}", record.Id, record.Barcode);
     }

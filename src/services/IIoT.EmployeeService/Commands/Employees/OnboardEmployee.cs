@@ -13,6 +13,7 @@ using System.Threading.Tasks;
 namespace IIoT.EmployeeService.Commands.Employees;
 
 [AuthorizeRequirement("Employee.Onboard")]
+[DistributedLock("iiot:lock:employee-onboard:{EmployeeNo}", TimeoutSeconds = 5)]
 public record OnboardEmployeeCommand(
     string EmployeeNo,
     string RealName,

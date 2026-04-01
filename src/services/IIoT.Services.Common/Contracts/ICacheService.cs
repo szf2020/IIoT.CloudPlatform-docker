@@ -26,4 +26,10 @@ public interface ICacheService
     /// 移除指定缓存
     /// </summary>
     Task RemoveAsync(string key, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 批量删除匹配通配符模式的所有缓存键，用于无法枚举精确 Key 的场景（如带日期范围的产能缓存）。
+    /// 模式语法与 Redis KEYS 一致，例如 "iiot:capacity:summary:v1:*"
+    /// </summary>
+    Task RemoveByPatternAsync(string pattern, CancellationToken cancellationToken = default);
 }

@@ -33,7 +33,7 @@ public class CapacityController : ApiControllerBase
     // ==========================================
 
     /// <summary>
-    /// 所有机台产能分页查询（延迟加载，带设备名称和良率）
+    /// 所有机台产能分页查询（延迟加载，带设备名称和良率，缓存优先）
     /// </summary>
     [HttpGet("daily")]
     public async Task<IActionResult> GetDailyPaged(
@@ -47,7 +47,7 @@ public class CapacityController : ApiControllerBase
     }
 
     /// <summary>
-    /// 单机台产能汇总查询（带缓存，默认最近7天走缓存）
+    /// 单机台产能汇总查询（缓存优先，所有日期范围均有效）
     /// </summary>
     [HttpGet("summary")]
     public async Task<IActionResult> GetDeviceSummary(

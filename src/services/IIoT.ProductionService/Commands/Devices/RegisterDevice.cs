@@ -12,6 +12,7 @@ using System.Threading.Tasks;
 namespace IIoT.ProductionService.Commands.Devices;
 
 [AuthorizeRequirement("Device.Create")]
+[DistributedLock("iiot:lock:device-register:{MacAddress}", TimeoutSeconds = 5)]
 public record RegisterDeviceCommand(
     string DeviceName,
     string MacAddress,

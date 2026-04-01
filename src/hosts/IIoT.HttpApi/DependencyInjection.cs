@@ -35,6 +35,7 @@ public static class DependencyInjection
                 typeof(IIoT.ProductionService.Commands.Recipes.CreateRecipeCommand).Assembly
             );
             cfg.AddOpenBehavior(typeof(AuthorizationBehavior<,>));
+            cfg.AddOpenBehavior(typeof(DistributedLockBehavior<,>));
         });
 
         // 4. 注册 AutoMapper

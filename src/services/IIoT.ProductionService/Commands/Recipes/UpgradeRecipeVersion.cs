@@ -14,6 +14,7 @@ namespace IIoT.ProductionService.Commands.Recipes;
 /// 基于指定的旧版本创建新版本，旧版本自动归档
 /// </summary>
 [AuthorizeRequirement("Recipe.Update")]
+[DistributedLock("iiot:lock:recipe-upgrade:{SourceRecipeId}", TimeoutSeconds = 5)]
 public record UpgradeRecipeVersionCommand(
     Guid SourceRecipeId,
     string NewVersion,

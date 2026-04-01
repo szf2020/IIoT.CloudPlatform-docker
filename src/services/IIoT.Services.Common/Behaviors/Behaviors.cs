@@ -1,4 +1,6 @@
-﻿using IIoT.Services.Common.Attributes;
+﻿using System.Reflection;
+using System.Text.RegularExpressions;
+using IIoT.Services.Common.Attributes;
 using IIoT.Services.Common.Contracts;
 using IIoT.Services.Common.Exceptions;
 using MediatR;
@@ -41,5 +43,43 @@ public class AuthorizationBehavior<TRequest, TResponse>(
             throw new ForbiddenException("拒绝访问：您的账号当前缺少执行该操作的必备权限点");
 
         return await next(cancellationToken);
+    }
+}
+
+/// <summary>
+/// 分布式锁管道行为 — 与 AuthorizationBehavior 完全相同的 AOP 模式。
+/// 在 Command 类上标注 [DistributedLock("key:{PropA}:{PropB}")] 即可自动加锁。
+/// </summary>
+public class DistributedLockBehavior<TRequest, TResponse>(
+    IDistributedLockService lockService) : IPipelineBehavior<TRequest, TResponse>
+    where TRequest : IRequest<TResponse>
+{
+    public async Task<TResponse> Handle(
+        TRequest request,
+        RequestHandlerDelegate<TResponse> next,
+        CancellationToken cancellationToken)
+    {
+        var attr = typeof(TRequest).GetCustomAttribute<DistributedLockAttribute>();
+        if (attr is null) return await next(cancellationToken);
+
+        var key = ResolveKey(attr.KeyTemplate, request);
+        await using var _ = await lockService.AcquireAsync(
+            key,
+            TimeSpan.FromSeconds(attr.TimeoutSeconds),
+            cancellationToken);
+
+        return await next(cancellationToken);
+    }
+
+    /// <summary>将模板 "iiot:lock:{DeviceId}:{Date}" 中的占位符替换为 request 对应属性的值</summary>
+    private static string ResolveKey(string template, TRequest request)
+    {
+        return Regex.Replace(template, @"\{(\w+)\}", m =>
+        {
+            var prop = typeof(TRequest).GetProperty(
+                m.Groups[1].Value,
+                BindingFlags.Public | BindingFlags.Instance);
+            return prop?.GetValue(request)?.ToString() ?? m.Value;
+        });
     }
 }

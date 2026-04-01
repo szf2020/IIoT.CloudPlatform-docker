@@ -1,9 +1,11 @@
-﻿using IIoT.Services.Common.Contracts;
+﻿using IIoT.Services.Common.Attributes;
+using IIoT.Services.Common.Contracts;
 using IIoT.SharedKernel.Messaging;
 using IIoT.SharedKernel.Result;
 
 namespace IIoT.IdentityService.Commands;
 
+[DistributedLock("iiot:lock:user-password:{UserId}", TimeoutSeconds = 5)]
 public record ChangePasswordCommand(Guid UserId, string CurrentPassword, string NewPassword) : ICommand<Result>;
 
 public class ChangePasswordHandler(IAccountService accountService) : ICommandHandler<ChangePasswordCommand, Result>

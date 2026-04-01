@@ -36,13 +36,16 @@ public class DeactivateDeviceHandler(
         // 🌟 第二道门：ABAC 管辖权拦截
         if (currentUser.Role != "Admin")
         {
-            var userId = Guid.Parse(currentUser.Id!);
+            if (!Guid.TryParse(currentUser.Id, out var userId)) return Result.Failure("用户凭证异常");
+
             var employee = await employeeRepository.GetAsync(
                 e => e.Id == userId,
                 [e => e.ProcessAccesses],
                 cancellationToken);
 
-            var hasAccess = employee!.ProcessAccesses.Any(pa => pa.ProcessId == device.ProcessId);
+            if (employee == null) return Result.Failure("系统中未找到您的员工档案");
+
+            var hasAccess = employee.ProcessAccesses.Any(pa => pa.ProcessId == device.ProcessId);
             if (!hasAccess) return Result.Failure("越权警告：您无权停用其他车间/工序的设备！");
         }
 
@@ -54,7 +57,7 @@ public class DeactivateDeviceHandler(
         // 🌟 缓存爆破：停用的设备绝不能再被命中
         if (affected > 0)
         {
-            await cacheService.RemoveAsync($"iiot:device:v1:{device.Id}", cancellationToken);
+            await cacheService.RemoveAsync($"iiot:device:mac:v1:{device.MacAddress}", cancellationToken);
             await cacheService.RemoveAsync($"iiot:devices:process:v1:{device.ProcessId}", cancellationToken);
             await cacheService.RemoveAsync("iiot:devices:v1:all-active", cancellationToken);
         }

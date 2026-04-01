@@ -74,7 +74,7 @@ public class CapacityQueryService(IDbConnectionFactory connectionFactory) : ICap
                    CASE WHEN c.total_count > 0 
                         THEN ROUND(c.ok_count * 100.0 / c.total_count, 2) 
                         ELSE 0 END AS ok_rate,
-                   d.device_name, d.device_code,
+                   d.device_name,
                    c.reported_at
             FROM daily_capacity c
             INNER JOIN devices d ON c.device_id = d.id

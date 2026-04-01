@@ -6,6 +6,7 @@ using IIoT.SharedKernel.Result;
 namespace IIoT.EmployeeService.Commands.Employees;
 
 [AuthorizeRequirement("Employee.Terminate")]
+[DistributedLock("iiot:lock:employee:{EmployeeId}", TimeoutSeconds = 5)]
 public record TerminateEmployeeCommand(Guid EmployeeId) : ICommand<Result>;
 
 public class TerminateEmployeeHandler(

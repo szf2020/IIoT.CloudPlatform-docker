@@ -11,6 +11,7 @@ using System.Threading.Tasks;
 namespace IIoT.IdentityService.Commands;
 
 [AuthorizeRequirement("Role.Define")]
+[DistributedLock("iiot:lock:role:{RoleName}", TimeoutSeconds = 5)]
 public record DefineRolePolicyCommand(string RoleName, List<string> Permissions) : ICommand<Result<bool>>;
 
 public class DefineRolePolicyHandler(
@@ -37,6 +38,7 @@ public class DefineRolePolicyHandler(
                 return Result.Failure(updateResult.Errors?.ToArray() ?? ["角色权限分配失败，已撤销角色创建"]);
             }
 
+            await cacheService.RemoveByPatternAsync("iiot:permissions:v1:user:*", cancellationToken);
             await cacheService.RemoveAsync("iiot:permissions:v1:all-defined", cancellationToken);
 
             return Result.Success(true);

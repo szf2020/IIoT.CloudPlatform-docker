@@ -11,6 +11,7 @@ namespace IIoT.EmployeeService.Commands.Employees;
 /// 业务层指令：全量同步/更新员工的管辖权
 /// </summary>
 [AuthorizeRequirement("Employee.UpdateAccess")] // 需要车间主任或管理员权限
+[DistributedLock("iiot:lock:employee:{EmployeeId}", TimeoutSeconds = 5)]
 public record UpdateEmployeeAccessCommand(
     Guid EmployeeId,
     List<Guid> ProcessIds, // 该员工最新的工序管辖列表

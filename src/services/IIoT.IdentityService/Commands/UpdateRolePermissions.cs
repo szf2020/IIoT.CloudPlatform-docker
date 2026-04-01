@@ -6,6 +6,7 @@ using IIoT.SharedKernel.Result;
 namespace IIoT.IdentityService.Commands;
 
 [AuthorizeRequirement("Role.Update")]
+[DistributedLock("iiot:lock:role:{RoleName}", TimeoutSeconds = 5)]
 public record UpdateRolePermissionsCommand(string RoleName, List<string> Permissions) : ICommand<Result<bool>>;
 
 public class UpdateRolePermissionsHandler(
@@ -24,6 +25,9 @@ public class UpdateRolePermissionsHandler(
 
         if (result.IsSuccess && result.Value)
         {
+            // 角色权限变更后，爆破所有用户的权限缓存（下次请求时重新从 DB 计算）
+            // 无法枚举哪些用户属于该角色，用模式删除兜底
+            await cacheService.RemoveByPatternAsync("iiot:permissions:v1:user:*", cancellationToken);
             await cacheService.RemoveAsync("iiot:permissions:v1:all-defined", cancellationToken);
         }
 

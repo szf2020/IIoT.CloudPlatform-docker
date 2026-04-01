@@ -48,7 +48,7 @@ public class DeviceLogQueryService(IDbConnectionFactory connectionFactory) : IDe
         }
 
         var dataSql = $@"
-            SELECT l.id, l.device_id, d.device_name, d.device_code,
+            SELECT l.id, l.device_id, d.device_name,
                    l.level, l.message, l.log_time, l.received_at
             FROM device_logs l
             INNER JOIN devices d ON l.device_id = d.id

@@ -12,6 +12,7 @@ namespace IIoT.IdentityService.Commands;
 /// 个人特批权限与角色权限是并集关系，最终生效权限 = 角色权限 + 个人特批权限。
 /// </remarks>
 [AuthorizeRequirement("Employee.Update")]
+[DistributedLock("iiot:lock:user-permissions:{UserId}", TimeoutSeconds = 5)]
 public record UpdateUserPermissionsCommand(
     Guid UserId,
     List<string> Permissions

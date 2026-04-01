@@ -177,7 +177,7 @@ const loading = ref(false);
 const searched = ref(false);
 const records = ref<any[]>([]);
 const currentPage = ref(1);
-const metaData = ref<PagedMetaData>({ totalCount: 0, pageSize: 10, currentPage: 1, totalPages: 1 });
+const metaData = ref<PagedMetaData>({ totalCount: 0, pageSize: 20, currentPage: 1, totalPages: 1 });
 const expandedId = ref<string | null>(null);
 
 const allDevices = ref<DeviceSelectDto[]>([]);
@@ -240,7 +240,7 @@ const fetchData = async () => {
   searched.value = true;
   try {
     let raw: any;
-    const pagination = { PageNumber: currentPage.value, PageSize: 10 };
+    const pagination = { PageNumber: currentPage.value, PageSize: 20 };
     const deviceId = selectedDeviceId.value;
 
     switch (currentMode.value) {
@@ -267,11 +267,17 @@ const fetchData = async () => {
 
     if (raw && raw.metaData) {
       metaData.value = raw.metaData as PagedMetaData;
-      const items: any[] = [];
-      for (const k of Object.keys(raw)) {
-        if (!isNaN(Number(k))) items.push(raw[k]);
+      // API 返回结构为 { items: [...], metaData: {...} }
+      if (Array.isArray(raw.items)) {
+        records.value = raw.items;
+      } else {
+        // 兼容旧结构：直接读取数组
+        const items: any[] = [];
+        for (const k of Object.keys(raw)) {
+          if (!isNaN(Number(k))) items.push(raw[k]);
+        }
+        records.value = items;
       }
-      records.value = items;
     } else if (Array.isArray(raw)) {
       records.value = raw;
     } else {

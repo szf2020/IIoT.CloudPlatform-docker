@@ -11,6 +11,7 @@ namespace IIoT.EmployeeService.Commands.Employees;
 /// </summary>
 // 🌟 权限拦截：执行此操作必须具备 Employee.Update 权限点
 [AuthorizeRequirement("Employee.Update")]
+[DistributedLock("iiot:lock:employee:{EmployeeId}", TimeoutSeconds = 5)]
 public record UpdateEmployeeProfileCommand(
     Guid EmployeeId,  // 目标员工的灵魂契约 ID
     string RealName,  // 修改后的真实姓名

@@ -11,6 +11,7 @@ namespace IIoT.EmployeeService.Commands.Employees;
 /// </summary>
 // 🌟 权限拦截：必须具备停用员工的权限
 [AuthorizeRequirement("Employee.Deactivate")]
+[DistributedLock("iiot:lock:employee:{EmployeeId}", TimeoutSeconds = 5)]
 public record DeactivateEmployeeCommand(Guid EmployeeId) : ICommand<Result>;
 
 public class DeactivateEmployeeHandler(

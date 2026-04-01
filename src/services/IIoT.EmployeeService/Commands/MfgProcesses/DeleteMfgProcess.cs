@@ -14,6 +14,7 @@ namespace IIoT.EmployeeService.Commands.MfgProcesses;
 /// 工序一旦被设备或员工管辖权引用，禁止删除，防止数据孤岛。
 /// </remarks>
 [AuthorizeRequirement("Process.Delete")]
+[DistributedLock("iiot:lock:mfg-process:{ProcessId}", TimeoutSeconds = 5)]
 public record DeleteMfgProcessCommand(Guid ProcessId) : ICommand<Result<bool>>;
 
 public class DeleteMfgProcessHandler(

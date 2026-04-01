@@ -11,6 +11,7 @@ namespace IIoT.EmployeeService.Commands.MfgProcesses;
 /// 业务指令：更新工序基础档案 (编码 + 名称)
 /// </summary>
 [AuthorizeRequirement("Process.Update")]
+[DistributedLock("iiot:lock:mfg-process-code:{ProcessCode}", TimeoutSeconds = 5)]
 public record UpdateMfgProcessCommand(
     Guid ProcessId,
     string ProcessCode,

@@ -17,6 +17,7 @@ namespace IIoT.ProductionService.Commands.Recipes;
 /// 业务指令：创建新的生产配方 (初始版本默认 V1.0)
 /// </summary>
 [AuthorizeRequirement("Recipe.Create")]
+[DistributedLock("iiot:lock:recipe-create:{ProcessId}:{DeviceId}:{RecipeName}", TimeoutSeconds = 5)]
 public record CreateRecipeCommand(
     string RecipeName,
     Guid ProcessId,

@@ -9,6 +9,7 @@ namespace IIoT.IdentityService.Commands;
 /// 业务指令：管理员强制重置指定员工的登录密码 (不需要旧密码)
 /// </summary>
 [AuthorizeRequirement("Employee.Update")]
+[DistributedLock("iiot:lock:user-password:{UserId}", TimeoutSeconds = 5)]
 public record ResetPasswordCommand(
     Guid UserId,
     string NewPassword
