@@ -9,7 +9,10 @@
       </button>
       <div>
         <h1 class="page-title">{{ deviceName }}</h1>
-        <p class="page-sub">产能详细报表 · 年 / 月 / 日 三级查询</p>
+        <p class="page-sub">
+          产能详细报表 · 年 / 月 / 日 三级查询
+          <span v-if="plcNameFilter" class="plc-badge">PLC: {{ plcNameFilter }}</span>
+        </p>
       </div>
     </div>
 
@@ -32,6 +35,17 @@
             <option v-for="y in yearOptions" :key="y" :value="y">{{ y }} 年</option>
           </select>
         </template>
+      </div>
+      <div class="plc-filter">
+        <input
+          type="text"
+          v-model="plcNameFilter"
+          class="filter-input"
+          placeholder="PLC 名称（不填查全部）"
+          style="width: 180px;"
+          @keyup.enter="fetchData"
+        />
+        <button class="clear-plc-btn" v-if="plcNameFilter" @click="clearPlcFilter" title="清空">✕</button>
       </div>
     </div>
 
@@ -141,6 +155,13 @@ const router = useRouter();
 
 const deviceId   = ref(route.query.deviceId   as string ?? '');
 const deviceName = ref(route.query.deviceName as string ?? '设备详情');
+
+const plcNameFilter = ref('');
+
+const clearPlcFilter = () => {
+  plcNameFilter.value = '';
+  fetchData();
+};
 
 // ── 查询模式 ────────────────────────────────────────────────────────
 const modes = [
@@ -252,7 +273,7 @@ const fetchData = async () => {
 // 日查询：优先 hourly 明细，兜底 summary
 const fetchDay = async (date: string) => {
   try {
-    const hourly = await getHourlyByDeviceApi({ deviceId: deviceId.value, date }) as unknown as any[];
+    const hourly = await getHourlyByDeviceApi({ deviceId: deviceId.value, date, plcName: plcNameFilter.value || undefined }) as unknown as any[];
     if (Array.isArray(hourly) && hourly.length > 0) {
       rows.value = hourly.map((h: any) => ({
         label: h.timeLabel   ?? h.time_label ?? h.TimeLabel ?? `${String(h.hour ?? h.Hour ?? 0).padStart(2,'0')}:${String(h.minute ?? h.Minute ?? 0).padStart(2,'0')}`,
@@ -269,7 +290,7 @@ const fetchDay = async (date: string) => {
   } catch { /* 兜底 summary */ }
 
   try {
-    const s = await getDailySummaryApi({ deviceId: deviceId.value, date }) as any;
+    const s = await getDailySummaryApi({ deviceId: deviceId.value, date, plcName: plcNameFilter.value || undefined }) as any;
     if (!s) return;
     const total = s.totalCount ?? 0;
     const ok    = s.okCount   ?? 0;
@@ -292,7 +313,7 @@ const fetchMonth = async (ym: string) => {
   const startDate = `${year}-${mm}-01`;
   const endDate   = `${year}-${mm}-${String(lastDay).padStart(2, '0')}`;
 
-  const list = await getSummaryRangeApi({ deviceId: deviceId.value, startDate, endDate }) as unknown as any[];
+  const list = await getSummaryRangeApi({ deviceId: deviceId.value, startDate, endDate, plcName: plcNameFilter.value || undefined }) as unknown as any[];
   rows.value = list
     .filter((s: any) => (s.totalCount ?? 0) > 0)
     .map((s: any) => {
@@ -309,7 +330,7 @@ const fetchYear = async (year: number) => {
   const startDate = `${year}-01-01`;
   const endDate   = `${year}-12-31`;
 
-  const list = await getSummaryRangeApi({ deviceId: deviceId.value, startDate, endDate }) as unknown as any[];
+  const list = await getSummaryRangeApi({ deviceId: deviceId.value, startDate, endDate, plcName: plcNameFilter.value || undefined }) as unknown as any[];
 
   const byMonth: Record<number, { total: number; ok: number; ng: number }> = {};
   for (let m = 1; m <= 12; m++) byMonth[m] = { total: 0, ok: 0, ng: 0 };
@@ -343,6 +364,10 @@ onMounted(() => fetchData());
 .page-sub { font-size: 12px; color: rgba(255,255,255,0.3); margin: 0; }
 
 .query-bar { display: flex; align-items: center; gap: 16px; margin-bottom: 16px; padding: 12px 16px; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06); border-radius: 4px; }
+.plc-filter { display: flex; align-items: center; gap: 4px; }
+.clear-plc-btn { background: none; border: none; color: rgba(255,255,255,0.35); font-size: 13px; cursor: pointer; padding: 0 4px; line-height: 1; transition: color 0.15s; }
+.clear-plc-btn:hover { color: rgba(255,255,255,0.7); }
+.plc-badge { display: inline-block; margin-left: 10px; font-size: 11px; background: rgba(0,229,255,0.1); color: #00e5ff; padding: 2px 8px; border-radius: 3px; border: 1px solid rgba(0,229,255,0.2); }
 .mode-tabs { display: flex; gap: 4px; }
 .mode-tab { padding: 6px 14px; border-radius: 3px; border: 1px solid rgba(255,255,255,0.08); background: rgba(255,255,255,0.03); color: rgba(255,255,255,0.4); font-size: 13px; cursor: pointer; transition: all 0.15s; font-family: 'Noto Sans SC', sans-serif; }
 .mode-tab:hover { border-color: rgba(0,229,255,0.25); color: rgba(255,255,255,0.7); }

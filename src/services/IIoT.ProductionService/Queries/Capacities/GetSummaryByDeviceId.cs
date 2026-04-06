@@ -7,10 +7,12 @@ namespace IIoT.ProductionService.Queries.Capacities;
 
 /// <summary>
 /// 按日查询汇总（按 deviceId 查询，统一唯一标识）
+/// plcName 可选，传入时只汇总该 PLC 的数据
 /// </summary>
 public record GetSummaryByDeviceIdQuery(
     Guid DeviceId,
-    DateOnly Date
+    DateOnly Date,
+    string? PlcName = null
 ) : IQuery<Result<DailySummaryDto?>>;
 
 public class GetSummaryByDeviceIdHandler(
@@ -22,7 +24,7 @@ public class GetSummaryByDeviceIdHandler(
         GetSummaryByDeviceIdQuery request,
         CancellationToken cancellationToken)
     {
-        var cacheKey = $"iiot:capacity:summary:v1:{request.DeviceId}:{request.Date:yyyyMMdd}";
+        var cacheKey = $"iiot:capacity:summary:v1:{request.DeviceId}:{request.Date:yyyyMMdd}:{request.PlcName ?? "all"}";
 
         var cached = await cacheService.GetAsync<DailySummaryDto>(cacheKey, cancellationToken);
         if (cached is not null)
@@ -31,6 +33,7 @@ public class GetSummaryByDeviceIdHandler(
         var data = await queryService.GetSummaryByDeviceIdAsync(
             request.DeviceId,
             request.Date,
+            request.PlcName,
             cancellationToken);
 
         if (data is not null)

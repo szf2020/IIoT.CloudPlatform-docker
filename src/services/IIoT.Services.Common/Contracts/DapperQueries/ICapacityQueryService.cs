@@ -5,6 +5,7 @@ namespace IIoT.Services.Common.Contracts.DapperQueries;
 /// <summary>
 /// 产能查询服务契约
 /// 统一使用 deviceId（Guid）作为唯一标识
+/// plcName 可选：不传时行为与旧版完全一致（不过滤），传入时只返回该 PLC 的数据
 /// </summary>
 public interface ICapacityQueryService
 {
@@ -14,6 +15,7 @@ public interface ICapacityQueryService
     Task<List<HourlyCapacityDto>> GetHourlyByDeviceIdAsync(
         Guid deviceId,
         DateOnly date,
+        string? plcName = null,
         CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -23,6 +25,7 @@ public interface ICapacityQueryService
     Task<DailySummaryDto?> GetSummaryByDeviceIdAsync(
         Guid deviceId,
         DateOnly date,
+        string? plcName = null,
         CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -33,6 +36,7 @@ public interface ICapacityQueryService
         Guid deviceId,
         DateOnly startDate,
         DateOnly endDate,
+        string? plcName = null,
         CancellationToken cancellationToken = default);
 
     /// <summary>

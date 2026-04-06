@@ -96,6 +96,7 @@ namespace IIoT.EntityFrameworkCore.Migrations
                     total_count = table.Column<int>(type: "integer", nullable: false),
                     ok_count = table.Column<int>(type: "integer", nullable: false),
                     ng_count = table.Column<int>(type: "integer", nullable: false),
+                    plc_name = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
                     reported_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
                 },
                 constraints: table =>
@@ -395,6 +396,11 @@ namespace IIoT.EntityFrameworkCore.Migrations
                 table: "hourly_capacity",
                 columns: new[] { "device_id", "date", "hour", "minute", "shift_code" },
                 unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "ix_hourly_capacity_device_date_plcname",
+                table: "hourly_capacity",
+                columns: new[] { "device_id", "date", "plc_name" });
 
             migrationBuilder.CreateIndex(
                 name: "ix_mfg_processes_process_code",

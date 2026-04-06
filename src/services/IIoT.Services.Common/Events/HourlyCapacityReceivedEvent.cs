@@ -11,4 +11,9 @@ public record HourlyCapacityReceivedEvent
     public int TotalCount { get; init; }
     public int OkCount { get; init; }
     public int NgCount { get; init; }
+
+    /// <summary>
+    /// 产生该产能数据的 PLC 名称（可空，Edge 端不传时为 null）
+    /// </summary>
+    public string? PlcName { get; init; }
 }

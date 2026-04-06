@@ -9,6 +9,7 @@ namespace IIoT.HttpApi.Controllers;
 /// <summary>
 /// 产能模块：接收 Edge 端产能上传 + 提供产能查询
 /// 统一使用 deviceId（Guid）作为唯一标识
+/// plcName 可选：区分同一上位机下多台 PLC 的产能数据，不传则返回全部（向后兼容）
 /// </summary>
 [Route("api/v1/[controller]")]
 [ApiController]
@@ -21,6 +22,7 @@ public class CapacityController : ApiControllerBase
 
     /// <summary>
     /// 接收半小时产能上报（实时同步 + 离线补传统一入口）
+    /// Body 中 plcName 字段可选，区分同一上位机下多台 PLC
     /// </summary>
     [HttpPost("hourly")]
     public async Task<IActionResult> ReceiveHourly([FromBody] ReceiveHourlyCapacityCommand command)
@@ -30,34 +32,38 @@ public class CapacityController : ApiControllerBase
     }
 
     // ==========================================
-    // 查询接口（统一用 deviceId）
+    // 查询接口（统一用 deviceId，plcName 可选）
     // ==========================================
 
     /// <summary>
     /// 按日查询半小时明细（日查询优先调用）
-    /// GET /api/v1/Capacity/hourly?deviceId=xxx&date=2026-04-01
+    /// GET /api/v1/Capacity/hourly?deviceId=xxx&amp;date=2026-04-01
+    /// GET /api/v1/Capacity/hourly?deviceId=xxx&amp;date=2026-04-01&amp;plcName=PLC_01
     /// </summary>
     [HttpGet("hourly")]
     public async Task<IActionResult> GetHourly(
         [FromQuery] Guid deviceId,
-        [FromQuery] DateOnly date)
+        [FromQuery] DateOnly date,
+        [FromQuery] string? plcName = null)
     {
-        var query = new GetHourlyByDeviceIdQuery(deviceId, date);
+        var query = new GetHourlyByDeviceIdQuery(deviceId, date, plcName);
         var result = await Sender.Send(query);
         return result.IsSuccess ? Ok(result.Value) : BadRequest(result.Errors);
     }
 
     /// <summary>
     /// 按日查询汇总（日查询兜底）
-    /// GET /api/v1/Capacity/summary?deviceId=xxx&date=2026-04-01
+    /// GET /api/v1/Capacity/summary?deviceId=xxx&amp;date=2026-04-01
+    /// GET /api/v1/Capacity/summary?deviceId=xxx&amp;date=2026-04-01&amp;plcName=PLC_01
     /// 无数据返回 204
     /// </summary>
     [HttpGet("summary")]
     public async Task<IActionResult> GetSummary(
         [FromQuery] Guid deviceId,
-        [FromQuery] DateOnly date)
+        [FromQuery] DateOnly date,
+        [FromQuery] string? plcName = null)
     {
-        var query = new GetSummaryByDeviceIdQuery(deviceId, date);
+        var query = new GetSummaryByDeviceIdQuery(deviceId, date, plcName);
         var result = await Sender.Send(query);
 
         if (!result.IsSuccess)
@@ -68,15 +74,17 @@ public class CapacityController : ApiControllerBase
 
     /// <summary>
     /// 按日期范围查询每日汇总（月/年查询使用，一次请求搞定）
-    /// GET /api/v1/Capacity/summary/range?deviceId=xxx&startDate=2026-03-01&endDate=2026-03-31
+    /// GET /api/v1/Capacity/summary/range?deviceId=xxx&amp;startDate=2026-03-01&amp;endDate=2026-03-31
+    /// GET /api/v1/Capacity/summary/range?deviceId=xxx&amp;startDate=2026-03-01&amp;endDate=2026-03-31&amp;plcName=PLC_01
     /// </summary>
     [HttpGet("summary/range")]
     public async Task<IActionResult> GetSummaryRange(
         [FromQuery] Guid deviceId,
         [FromQuery] DateOnly startDate,
-        [FromQuery] DateOnly endDate)
+        [FromQuery] DateOnly endDate,
+        [FromQuery] string? plcName = null)
     {
-        var query = new GetSummaryRangeQuery(deviceId, startDate, endDate);
+        var query = new GetSummaryRangeQuery(deviceId, startDate, endDate, plcName);
         var result = await Sender.Send(query);
         return result.IsSuccess ? Ok(result.Value) : BadRequest(result.Errors);
     }

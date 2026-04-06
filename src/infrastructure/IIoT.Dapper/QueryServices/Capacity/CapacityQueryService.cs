@@ -11,6 +11,7 @@ public class CapacityQueryService(IDbConnectionFactory connectionFactory) : ICap
     public async Task<List<HourlyCapacityDto>> GetHourlyByDeviceIdAsync(
         Guid deviceId,
         DateOnly date,
+        string? plcName = null,
         CancellationToken cancellationToken = default)
     {
         using var connection = connectionFactory.CreateConnection();
@@ -27,9 +28,14 @@ public class CapacityQueryService(IDbConnectionFactory connectionFactory) : ICap
             FROM hourly_capacity h
             WHERE h.device_id = @DeviceId
               AND h.date = @Date
+              AND (@PlcName IS NULL OR h.plc_name = @PlcName)
             ORDER BY h.hour, h.minute";
 
-        var cmd = new CommandDefinition(sql, new { DeviceId = deviceId, Date = date }, cancellationToken: cancellationToken);
+        var cmd = new CommandDefinition(
+            sql,
+            new { DeviceId = deviceId, Date = date, PlcName = plcName },
+            cancellationToken: cancellationToken);
+
         var rows = await connection.QueryAsync<HourlyCapacityDto>(cmd);
         return rows.ToList();
     }
@@ -39,6 +45,7 @@ public class CapacityQueryService(IDbConnectionFactory connectionFactory) : ICap
     public async Task<DailySummaryDto?> GetSummaryByDeviceIdAsync(
         Guid deviceId,
         DateOnly date,
+        string? plcName = null,
         CancellationToken cancellationToken = default)
     {
         using var connection = connectionFactory.CreateConnection();
@@ -52,9 +59,14 @@ public class CapacityQueryService(IDbConnectionFactory connectionFactory) : ICap
             FROM hourly_capacity h
             WHERE h.device_id = @DeviceId
               AND h.date = @Date
+              AND (@PlcName IS NULL OR h.plc_name = @PlcName)
             GROUP BY h.shift_code";
 
-        var cmd = new CommandDefinition(sql, new { DeviceId = deviceId, Date = date }, cancellationToken: cancellationToken);
+        var cmd = new CommandDefinition(
+            sql,
+            new { DeviceId = deviceId, Date = date, PlcName = plcName },
+            cancellationToken: cancellationToken);
+
         var rows = (await connection.QueryAsync(cmd)).ToList();
         if (rows.Count == 0) return null;
 
@@ -76,6 +88,7 @@ public class CapacityQueryService(IDbConnectionFactory connectionFactory) : ICap
         Guid deviceId,
         DateOnly startDate,
         DateOnly endDate,
+        string? plcName = null,
         CancellationToken cancellationToken = default)
     {
         using var connection = connectionFactory.CreateConnection();
@@ -91,12 +104,13 @@ public class CapacityQueryService(IDbConnectionFactory connectionFactory) : ICap
             WHERE h.device_id = @DeviceId
               AND h.date >= @StartDate
               AND h.date <= @EndDate
+              AND (@PlcName IS NULL OR h.plc_name = @PlcName)
             GROUP BY h.date, h.shift_code
             ORDER BY h.date ASC, h.shift_code ASC";
 
         var cmd = new CommandDefinition(
             sql,
-            new { DeviceId = deviceId, StartDate = startDate, EndDate = endDate },
+            new { DeviceId = deviceId, StartDate = startDate, EndDate = endDate, PlcName = plcName },
             cancellationToken: cancellationToken);
 
         var rows = (await connection.QueryAsync<DailyRangeRow>(cmd)).ToList();
@@ -139,7 +153,7 @@ public class CapacityQueryService(IDbConnectionFactory connectionFactory) : ICap
         return result;
     }
 
-    // ── 4. 云端后台分页 ──────────────────────────────────────────────────
+    // ── 4. 云端后台分页（不加 plcName 过滤，后台管理用途，展示全量数据）──
 
     public async Task<(List<dynamic> Items, int TotalCount)> GetDailyPagedAsync(
         Pagination pagination,

@@ -22,6 +22,7 @@ export interface DeviceSelectDto {
   deviceName: string;
   processId: string;
   isActive: boolean;
+  macAddress?: string;
 }
 
 /** 设备注册指令 — 对齐 RegisterDeviceCommand */

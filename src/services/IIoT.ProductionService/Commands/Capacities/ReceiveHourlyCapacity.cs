@@ -10,6 +10,7 @@ namespace IIoT.ProductionService.Commands.Capacities;
 /// <summary>
 /// 业务指令：接收半小时产能汇总
 /// 边缘端补传任务按时段上报
+/// PlcName：区分同一上位机下多台 PLC 的产能来源（可空）
 /// </summary>
 public record ReceiveHourlyCapacityCommand(
     Guid DeviceId,
@@ -20,7 +21,8 @@ public record ReceiveHourlyCapacityCommand(
     string TimeLabel,
     int TotalCount,
     int OkCount,
-    int NgCount
+    int NgCount,
+    string? PlcName = null
 ) : ICommand<Result<bool>>;
 
 public class ReceiveHourlyCapacityHandler(

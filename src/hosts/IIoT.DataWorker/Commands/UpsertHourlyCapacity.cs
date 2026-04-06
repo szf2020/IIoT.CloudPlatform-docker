@@ -18,7 +18,8 @@ public record UpsertHourlyCapacityCommand(
     string TimeLabel,
     int TotalCount,
     int OkCount,
-    int NgCount
+    int NgCount,
+    string? PlcName = null
 ) : IRequest;
 
 public class UpsertHourlyCapacityHandler(
@@ -49,6 +50,7 @@ public class UpsertHourlyCapacityHandler(
         if (existing is not null)
         {
             existing.TimeLabel = request.TimeLabel;
+            existing.PlcName = request.PlcName;
             existing.UpdateCapacity(request.TotalCount, request.OkCount, request.NgCount);
             logger.LogInformation("半小时产能已存在，执行覆盖更新。");
         }
@@ -63,14 +65,16 @@ public class UpsertHourlyCapacityHandler(
                 request.TimeLabel,
                 request.TotalCount,
                 request.OkCount,
-                request.NgCount));
+                request.NgCount,
+                request.PlcName));
         }
 
         await dbContext.SaveChangesAsync(cancellationToken);
 
         await cacheService.RemoveByPatternAsync("iiot:capacity:paged:v1:*", cancellationToken);
 
-        logger.LogInformation("半小时产能写入成功: DeviceId={DeviceId}, Date={Date}, Time={Hour}:{Minute}",
-            request.DeviceId, request.Date, request.Hour, request.Minute);
+        logger.LogInformation(
+            "半小时产能写入成功: DeviceId={DeviceId}, PlcName={PlcName}, Date={Date}, Time={Hour}:{Minute}",
+            request.DeviceId, request.PlcName ?? "(null)", request.Date, request.Hour, request.Minute);
     }
 }

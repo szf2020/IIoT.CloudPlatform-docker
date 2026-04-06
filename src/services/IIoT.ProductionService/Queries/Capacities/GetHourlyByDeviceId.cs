@@ -7,10 +7,12 @@ namespace IIoT.ProductionService.Queries.Capacities;
 
 /// <summary>
 /// 按日查询半小时明细（按 deviceId 查询，统一唯一标识）
+/// plcName 可选，传入时只返回该 PLC 的数据
 /// </summary>
 public record GetHourlyByDeviceIdQuery(
     Guid DeviceId,
-    DateOnly Date
+    DateOnly Date,
+    string? PlcName = null
 ) : IQuery<Result<List<HourlyCapacityDto>>>;
 
 public class GetHourlyByDeviceIdHandler(
@@ -22,7 +24,7 @@ public class GetHourlyByDeviceIdHandler(
         GetHourlyByDeviceIdQuery request,
         CancellationToken cancellationToken)
     {
-        var cacheKey = $"iiot:capacity:hourly:v1:{request.DeviceId}:{request.Date:yyyyMMdd}";
+        var cacheKey = $"iiot:capacity:hourly:v1:{request.DeviceId}:{request.Date:yyyyMMdd}:{request.PlcName ?? "all"}";
 
         var cached = await cacheService.GetAsync<List<HourlyCapacityDto>>(cacheKey, cancellationToken);
         if (cached is not null)
@@ -31,6 +33,7 @@ public class GetHourlyByDeviceIdHandler(
         var data = await queryService.GetHourlyByDeviceIdAsync(
             request.DeviceId,
             request.Date,
+            request.PlcName,
             cancellationToken);
 
         if (data.Count > 0)

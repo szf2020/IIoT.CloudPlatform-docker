@@ -29,6 +29,7 @@ export interface HourlyCapacityItem {
   totalCount: number;
   okCount:    number;
   ngCount:    number;
+  plcName?:   string | null;
 }
 
 // 日汇总对象（月/年聚合基础）
@@ -81,11 +82,13 @@ export const getDailyPagedApi = (params: {
 export const getHourlyByDeviceApi = (params: {
   deviceId: string;
   date:     string;
+  plcName?: string;
 }) => {
   return http.get<HourlyCapacityItem[]>('/capacity/hourly', {
     params: {
       deviceId: params.deviceId,
       date:     params.date,
+      plcName:  params.plcName || undefined,
     },
   });
 };
@@ -95,11 +98,13 @@ export const getHourlyByDeviceApi = (params: {
 export const getDailySummaryApi = (params: {
   deviceId: string;
   date:     string;
+  plcName?: string;
 }) => {
   return http.get<DailySummaryItem | null>('/capacity/summary', {
     params: {
       deviceId: params.deviceId,
       date:     params.date,
+      plcName:  params.plcName || undefined,
     },
   });
 };
@@ -110,12 +115,14 @@ export const getSummaryRangeApi = (params: {
   deviceId:  string;
   startDate: string;
   endDate:   string;
+  plcName?:  string;
 }) => {
   return http.get<DailyRangeSummaryDto[]>('/capacity/summary/range', {
     params: {
       deviceId:  params.deviceId,
       startDate: params.startDate,
       endDate:   params.endDate,
+      plcName:   params.plcName || undefined,
     },
   });
 };

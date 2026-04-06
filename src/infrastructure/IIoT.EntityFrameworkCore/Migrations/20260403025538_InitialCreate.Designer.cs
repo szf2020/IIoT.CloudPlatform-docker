@@ -12,7 +12,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace IIoT.EntityFrameworkCore.Migrations
 {
     [DbContext(typeof(IIoTDbContext))]
-    [Migration("20260402005307_InitialCreate")]
+    [Migration("20260403025538_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -151,6 +151,11 @@ namespace IIoT.EntityFrameworkCore.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("ok_count");
 
+                    b.Property<string>("PlcName")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("plc_name");
+
                     b.Property<DateTime>("ReportedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("reported_at");
@@ -172,6 +177,9 @@ namespace IIoT.EntityFrameworkCore.Migrations
                         .HasColumnName("total_count");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("DeviceId", "Date", "PlcName")
+                        .HasDatabaseName("ix_hourly_capacity_device_date_plcname");
 
                     b.HasIndex("DeviceId", "Date", "Hour", "Minute", "ShiftCode")
                         .IsUnique()
