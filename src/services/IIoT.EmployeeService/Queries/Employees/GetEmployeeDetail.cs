@@ -12,7 +12,6 @@ public record EmployeeDetailDto(
     string EmployeeNo,
     string RealName,
     bool IsActive,
-    List<Guid> ProcessIds,
     List<Guid> DeviceIds
 );
 
@@ -39,7 +38,6 @@ public class GetEmployeeDetailHandler(
             employee.EmployeeNo,
             employee.RealName,
             employee.IsActive,
-            employee.ProcessAccesses.Select(p => p.ProcessId).ToList(),
             employee.DeviceAccesses.Select(d => d.DeviceId).ToList()
         );
 

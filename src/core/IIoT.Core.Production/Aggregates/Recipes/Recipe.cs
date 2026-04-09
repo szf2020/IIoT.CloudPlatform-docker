@@ -37,12 +37,14 @@ public class Recipe : IAggregateRoot
         string recipeName,
         Guid processId,
         string parametersJsonb,
-        Guid? deviceId = null)
+        Guid deviceId)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(recipeName);
         ArgumentException.ThrowIfNullOrWhiteSpace(parametersJsonb);
         if (processId == Guid.Empty)
             throw new ArgumentException("ProcessId 不能为空。", nameof(processId));
+        if (deviceId == Guid.Empty)
+            throw new ArgumentException("DeviceId 不能为空。", nameof(deviceId));
 
         Id = Guid.NewGuid();
         RecipeName = recipeName.Trim();
@@ -59,7 +61,7 @@ public class Recipe : IAggregateRoot
     private Recipe(
         string recipeName,
         Guid processId,
-        Guid? deviceId,
+        Guid deviceId,
         string parametersJsonb,
         string version)
     {
@@ -75,7 +77,7 @@ public class Recipe : IAggregateRoot
     public Guid Id { get; private set; }
 
     /// <summary>
-    /// 配方名称 (如:A型号冬季特调配方)
+    /// 配方名称
     /// </summary>
     public string RecipeName { get; private set; } = null!;
 
@@ -90,10 +92,9 @@ public class Recipe : IAggregateRoot
     public Guid ProcessId { get; private set; }
 
     /// <summary>
-    /// 可空专属设备 UUID
-    /// null = 该工序下通用配方,有值 = 特定机器专属配方
+    /// 归属设备 UUID(配方强绑定到具体设备)
     /// </summary>
-    public Guid? DeviceId { get; private set; }
+    public Guid DeviceId { get; private set; }
 
     /// <summary>
     /// 配方参数 (JSONB)

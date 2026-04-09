@@ -28,6 +28,7 @@ public class RecipeConfiguration : IEntityTypeConfiguration<Recipe>
             .HasColumnName("process_id");
 
         builder.Property(r => r.DeviceId)
+            .IsRequired()
             .HasColumnName("device_id");
 
         builder.Property(r => r.Status)

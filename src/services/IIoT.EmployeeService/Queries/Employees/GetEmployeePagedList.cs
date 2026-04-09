@@ -9,14 +9,13 @@ using IIoT.SharedKernel.Result;
 namespace IIoT.EmployeeService.Queries.Employees;
 
 /// <summary>
-/// 列表展示 DTO:带双维管辖权计数,前端无需再发 N 个额外请求
+/// 列表展示 DTO:带机台管辖权计数,前端无需再发 N 个额外请求
 /// </summary>
 public record EmployeeListItemDto(
     Guid Id,
     string EmployeeNo,
     string RealName,
     bool IsActive,
-    int ProcessCount,
     int DeviceCount
 );
 
@@ -41,7 +40,7 @@ public class GetEmployeePagedListHandler(
         var countSpec = new EmployeePagedSpec(0, 0, request.Keyword, isPaging: false);
         var totalCount = await employeeRepository.CountAsync(countSpec, cancellationToken);
 
-        // 再按需加载分页数据,Include 双维管辖权,在内存里统计避免 N+1
+        // 再按需加载分页数据,Include 机台管辖权,在内存里统计避免 N+1
         List<Employee> list = [];
         if (totalCount > 0)
         {
@@ -54,7 +53,6 @@ public class GetEmployeePagedListHandler(
             e.EmployeeNo,
             e.RealName,
             e.IsActive,
-            e.ProcessAccesses.Count,
             e.DeviceAccesses.Count
         )).ToList();
 

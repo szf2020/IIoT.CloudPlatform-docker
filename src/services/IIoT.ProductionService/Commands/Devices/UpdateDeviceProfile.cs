@@ -17,8 +17,6 @@ public record UpdateDeviceProfileCommand(
 ) : ICommand<Result<bool>>;
 
 public class UpdateDeviceProfileHandler(
-    ICurrentUser currentUser,
-    IReadRepository<Employee> employeeRepository,
     IRepository<Device> deviceRepository,
     ICacheService cacheService
 ) : ICommandHandler<UpdateDeviceProfileCommand, Result<bool>>
@@ -38,24 +36,6 @@ public class UpdateDeviceProfileHandler(
 
         if (device is null)
             return Result.Failure("目标设备不存在");
-
-        // ABAC:非 Admin 必须有该工序的管辖权
-        if (currentUser.Role != "Admin")
-        {
-            if (!Guid.TryParse(currentUser.Id, out var userId))
-                return Result.Failure("用户凭证异常");
-
-            var employee = await employeeRepository.GetSingleOrDefaultAsync(
-                new EmployeeWithAccessesSpec(userId),
-                cancellationToken);
-
-            if (employee is null)
-                return Result.Failure("系统中未找到您的员工档案");
-
-            var hasAccess = employee.ProcessAccesses.Any(pa => pa.ProcessId == device.ProcessId);
-            if (!hasAccess)
-                return Result.Failure("越权:您没有该设备所属工序的管理权限");
-        }
 
         device.Rename(deviceName);
 

@@ -63,20 +63,10 @@ public class UpgradeRecipeVersionHandler(
             if (employee is null)
                 return Result.Failure("系统中未找到您的员工档案");
 
-            if (source.DeviceId.HasValue)
-            {
-                var hasDeviceAccess = employee.DeviceAccesses
-                    .Any(d => d.DeviceId == source.DeviceId.Value);
-                if (!hasDeviceAccess)
-                    return Result.Failure("越权:您没有该机台的管辖权");
-            }
-            else
-            {
-                var hasProcessAccess = employee.ProcessAccesses
-                    .Any(p => p.ProcessId == source.ProcessId);
-                if (!hasProcessAccess)
-                    return Result.Failure("越权:您没有该工序的管辖权");
-            }
+            var hasDeviceAccess = employee.DeviceAccesses
+                .Any(d => d.DeviceId == source.DeviceId);
+            if (!hasDeviceAccess)
+                return Result.Failure("越权:您没有该机台的管辖权");
         }
 
         // 3. 版本号防重(只读校验,走 IDataQueryService)
@@ -112,11 +102,8 @@ public class UpgradeRecipeVersionHandler(
         await cacheService.RemoveAsync($"iiot:recipe:v1:{source.Id}", cancellationToken);
         await cacheService.RemoveAsync(
             $"iiot:recipes:process:v1:{source.ProcessId}", cancellationToken);
-        if (source.DeviceId.HasValue)
-        {
-            await cacheService.RemoveAsync(
-                $"iiot:recipes:device:v1:{source.DeviceId.Value}", cancellationToken);
-        }
+        await cacheService.RemoveAsync(
+            $"iiot:recipes:device:v1:{source.DeviceId}", cancellationToken);
 
         return Result.Success(newRecipe.Id);
     }

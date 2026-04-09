@@ -8,13 +8,12 @@ using IIoT.SharedKernel.Result;
 namespace IIoT.EmployeeService.Commands.Employees;
 
 /// <summary>
-/// 业务指令:全量同步员工的工序级 + 机台级管辖权
+/// 业务指令:全量同步员工的机台管辖权
 /// </summary>
 [AuthorizeRequirement("Employee.UpdateAccess")]
 [DistributedLock("iiot:lock:employee:{EmployeeId}", TimeoutSeconds = 5)]
 public record UpdateEmployeeAccessCommand(
     Guid EmployeeId,
-    List<Guid> ProcessIds,
     List<Guid> DeviceIds
 ) : ICommand<Result<bool>>;
 
@@ -32,14 +31,6 @@ public class UpdateEmployeeAccessHandler(
 
         if (employee is null)
             return Result.Failure("未找到目标员工档案");
-
-        // 工序管辖权差集更新
-        var existingProcessIds = employee.ProcessAccesses.Select(p => p.ProcessId).ToList();
-        var processesToRemove = existingProcessIds.Except(request.ProcessIds).ToList();
-        var processesToAdd = request.ProcessIds.Except(existingProcessIds).ToList();
-
-        foreach (var id in processesToRemove) employee.RemoveProcessAccess(id);
-        foreach (var id in processesToAdd) employee.AddProcessAccess(id);
 
         // 机台管辖权差集更新
         var existingDeviceIds = employee.DeviceAccesses.Select(d => d.DeviceId).ToList();

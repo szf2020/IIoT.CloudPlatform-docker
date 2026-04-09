@@ -7,7 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace IIoT.HttpApi.Controllers;
 
 /// <summary>
-/// 配方科：生产工艺与参数中枢 (负责通用与特调配方的管理下发)
+/// 配方科：生产工艺与参数中枢 (负责配方的管理下发)
 /// </summary>
 [Route("api/v1/[controller]")]
 [ApiController]
@@ -23,13 +23,8 @@ public class RecipeController : ApiControllerBase
     /// <param name="pagination">分页参数</param>
     /// <param name="keyword">搜索关键字</param>
     [HttpGet]
-    // 🌟 核心修复：把复杂的 record 拆开，让框架先成功绑定基础的 Pagination 和 keyword
     public async Task<IActionResult> GetPagedList([FromQuery] Pagination pagination, [FromQuery] string? keyword = null)
     {
-        // 🌟 防御性初始化：如果前端连分页参数都没传，保证它有一个默认值，绝对不为 null
-        pagination ??= new Pagination();
-
-        // 🌟 手动组装严格的 CQRS 契约对象，再发给 MediatR
         var query = new GetMyRecipesPagedQuery(pagination, keyword);
         var result = await Sender.Send(query);
 
@@ -37,10 +32,10 @@ public class RecipeController : ApiControllerBase
     }
 
     /// <summary>
-    /// 极速获取单体配方详情 (包含 JSONB 工艺参数)
+    /// 获取配方详情 (包含 JSONB 工艺参数)
     /// </summary>
     /// <remarks>
-    /// 结合 Redis 缓存极速读取，内存级 ABAC 防越权窥探。
+    /// 结合 Redis 缓存读取，按机台管辖权做访问控制。
     /// </remarks>
     /// <param name="id">配方 ID</param>
     [HttpGet("{id}")]
@@ -55,7 +50,7 @@ public class RecipeController : ApiControllerBase
     /// 创建全新生产配方 (初始版本 V1.0)
     /// </summary>
     /// <remarks>
-    /// 传 DeviceId 即为特调配方，不传即为通用配方。底层自动进行权限拦截校验。
+    /// 配方强绑定设备，底层自动进行权限拦截校验。
     /// </remarks>
     /// <param name="command">配方核心资料与 JSONB 参数</param>
     [HttpPost]
@@ -93,8 +88,7 @@ public class RecipeController : ApiControllerBase
     /// 根据设备ID获取该设备可用的配方列表（含完整 JSONB 工艺参数）
     /// </summary>
     /// <remarks>
-    /// 边缘端 RecipeSyncTask 定时拉取专用接口。
-    /// 返回该设备的专属特调配方 + 所属工序的通用配方，不走员工权限校验。
+    /// 边缘端 RecipeSyncTask 定时拉取专用接口。返回该设备的所有启用版本配方，不走员工权限校验。
     /// </remarks>
     /// <param name="deviceId">设备 ID</param>
     [HttpGet("device/{deviceId}")]

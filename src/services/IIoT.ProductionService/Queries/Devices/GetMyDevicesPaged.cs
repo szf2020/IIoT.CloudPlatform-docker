@@ -29,7 +29,6 @@ public class GetMyDevicesPagedHandler(
 {
     public async Task<Result<PagedList<DeviceListItemDto>>> Handle(GetMyDevicesPagedQuery request, CancellationToken cancellationToken)
     {
-        List<Guid>? allowedProcessIds = null;
         List<Guid>? allowedDeviceIds = null;
 
         if (currentUser.Role != "Admin")
@@ -41,10 +40,9 @@ public class GetMyDevicesPagedHandler(
 
             if (employee == null) return Result.Failure("系统中未找到您的员工档案");
 
-            allowedProcessIds = employee.ProcessAccesses.Select(p => p.ProcessId).ToList();
             allowedDeviceIds = employee.DeviceAccesses.Select(d => d.DeviceId).ToList();
 
-            if (allowedProcessIds.Count == 0 && allowedDeviceIds.Count == 0)
+            if (allowedDeviceIds.Count == 0)
             {
                 var emptyList = new PagedList<DeviceListItemDto>([], 0, request.PaginationParams);
                 return Result.Success(emptyList);
@@ -54,13 +52,13 @@ public class GetMyDevicesPagedHandler(
         var skip = (request.PaginationParams.PageNumber - 1) * request.PaginationParams.PageSize;
         var take = request.PaginationParams.PageSize;
 
-        var countSpec = new DevicePagedSpec(0, 0, allowedProcessIds, allowedDeviceIds, request.Keyword, isPaging: false);
+        var countSpec = new DevicePagedSpec(0, 0, allowedDeviceIds, request.Keyword, isPaging: false);
         var totalCount = await deviceRepository.CountAsync(countSpec, cancellationToken);
 
         List<Device> list = [];
         if (totalCount > 0)
         {
-            var pagedSpec = new DevicePagedSpec(skip, take, allowedProcessIds, allowedDeviceIds, request.Keyword, isPaging: true);
+            var pagedSpec = new DevicePagedSpec(skip, take, allowedDeviceIds, request.Keyword, isPaging: true);
             list = await deviceRepository.GetListAsync(pagedSpec, cancellationToken);
         }
 

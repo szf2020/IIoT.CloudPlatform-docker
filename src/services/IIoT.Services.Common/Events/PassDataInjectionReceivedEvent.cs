@@ -3,22 +3,11 @@
 /// <summary>
 /// 注液工序过站数据接收事件(单条)。
 /// HttpApi 接收上位机上报后发布,DataWorker 消费后落库。
-/// 身份信息(MacAddress + ClientCode)随事件透传,
-/// 由 Persist 用例在消费侧重新组装为 ClientInstanceId 值对象。
+/// 上位机身份已在轮询认证接口换取 DeviceId,后续数据流转全部以 DeviceId 为唯一标识。
 /// </summary>
 public record PassDataInjectionReceivedEvent
 {
     public Guid DeviceId { get; init; }
-
-    /// <summary>
-    /// 上位机宿主机 MAC 地址。
-    /// </summary>
-    public string MacAddress { get; init; } = string.Empty;
-
-    /// <summary>
-    /// 上位机实例编号。
-    /// </summary>
-    public string ClientCode { get; init; } = string.Empty;
 
     public string Barcode { get; init; } = string.Empty;
     public string CellResult { get; init; } = string.Empty;

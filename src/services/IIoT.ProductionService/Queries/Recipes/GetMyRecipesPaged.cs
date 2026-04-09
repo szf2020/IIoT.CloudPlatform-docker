@@ -1,7 +1,6 @@
 ﻿using IIoT.Core.Employee.Aggregates.Employees;
 using IIoT.Core.Employee.Specifications;
 using IIoT.Core.Production.Aggregates.Recipes;
-using IIoT.Core.Production.Specifications;
 using IIoT.Core.Production.Specifications.Recipes;
 using IIoT.Services.Common.Attributes;
 using IIoT.Services.Common.Contracts;
@@ -9,11 +8,6 @@ using IIoT.SharedKernel.Messaging;
 using IIoT.SharedKernel.Paging;
 using IIoT.SharedKernel.Repository;
 using IIoT.SharedKernel.Result;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace IIoT.ProductionService.Queries.Recipes;
 
@@ -22,7 +16,7 @@ public record RecipeListItemDto(
     string RecipeName,
     string Version,
     Guid ProcessId,
-    Guid? DeviceId,
+    Guid DeviceId,
     string Status
 );
 
@@ -40,7 +34,6 @@ public class GetMyRecipesPagedHandler(
 {
     public async Task<Result<PagedList<RecipeListItemDto>>> Handle(GetMyRecipesPagedQuery request, CancellationToken cancellationToken)
     {
-        List<Guid>? allowedProcessIds = null;
         List<Guid>? allowedDeviceIds = null;
 
         if (currentUser.Role != "Admin")
@@ -52,10 +45,9 @@ public class GetMyRecipesPagedHandler(
 
             if (employee == null) return Result.Failure("系统中未找到您的员工档案");
 
-            allowedProcessIds = employee.ProcessAccesses.Select(p => p.ProcessId).ToList();
             allowedDeviceIds = employee.DeviceAccesses.Select(d => d.DeviceId).ToList();
 
-            if (allowedProcessIds.Count == 0 && allowedDeviceIds.Count == 0)
+            if (allowedDeviceIds.Count == 0)
             {
                 var emptyList = new PagedList<RecipeListItemDto>([], 0, request.PaginationParams);
                 return Result.Success(emptyList);
@@ -65,8 +57,8 @@ public class GetMyRecipesPagedHandler(
         var skip = (request.PaginationParams.PageNumber - 1) * request.PaginationParams.PageSize;
         var take = request.PaginationParams.PageSize;
 
-        var pagedSpec = new RecipePagedSpec(skip, take, allowedProcessIds, allowedDeviceIds, request.Keyword, isPaging: true);
-        var countSpec = new RecipePagedSpec(0, 0, allowedProcessIds, allowedDeviceIds, request.Keyword, isPaging: false);
+        var pagedSpec = new RecipePagedSpec(skip, take, allowedDeviceIds, request.Keyword, isPaging: true);
+        var countSpec = new RecipePagedSpec(0, 0, allowedDeviceIds, request.Keyword, isPaging: false);
 
         var totalCount = await recipeRepository.CountAsync(countSpec, cancellationToken);
 

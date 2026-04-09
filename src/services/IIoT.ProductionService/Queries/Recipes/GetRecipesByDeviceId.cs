@@ -15,7 +15,7 @@ public record RecipeForDeviceDto(
     string RecipeName,
     string Version,
     Guid ProcessId,
-    Guid? DeviceId,
+    Guid DeviceId,
     string ParametersJsonb,
     string Status
 );
@@ -42,15 +42,15 @@ public class GetRecipesByDeviceIdHandler(
         var cached = await cacheService.GetAsync<List<RecipeForDeviceDto>>(cacheKey, cancellationToken);
         if (cached != null) return Result.Success(cached);
 
-        // 2. 校验设备存在且激活,顺带拿到 ProcessId 喂给下一步的 Spec
-        var device = await dataQueryService.FirstOrDefaultAsync(
+        // 2. 断言设备存在且激活
+        var deviceExists = await dataQueryService.AnyAsync(
             dataQueryService.Devices.Where(d => d.Id == request.DeviceId && d.IsActive));
 
-        if (device is null)
+        if (!deviceExists)
             return Result.Failure("查询失败:设备不存在或已停用");
 
-        // 3. 使用规约查询:专属特调配方 + 该工序通用配方
-        var spec = new RecipeByDeviceIdSpec(request.DeviceId, device.ProcessId);
+        // 3. 使用规约查询:设备专属配方
+        var spec = new RecipeByDeviceIdSpec(request.DeviceId);
         var recipes = await recipeRepository.GetListAsync(spec, cancellationToken);
 
         var dtos = recipes.Select(r => new RecipeForDeviceDto(

@@ -11,8 +11,7 @@ namespace IIoT.ProductionService.Queries.Devices;
 public record DeviceSelectDto(
     Guid Id,
     string DeviceName,
-    Guid ProcessId,
-    bool IsActive
+    Guid ProcessId
 );
 
 [AuthorizeRequirement("Device.Read")]
@@ -34,7 +33,7 @@ public class GetAllActiveDevicesHandler(
         var list = await deviceRepository.GetListAsync(spec, cancellationToken);
 
         var dtos = list.Select(d => new DeviceSelectDto(
-            d.Id, d.DeviceName, d.ProcessId, d.IsActive
+            d.Id, d.DeviceName, d.ProcessId
         )).ToList();
 
         await cacheService.SetAsync(CacheKey, dtos, TimeSpan.FromHours(2), cancellationToken);

@@ -8,7 +8,6 @@ using IIoT.SharedKernel.Result;
 namespace IIoT.EmployeeService.Queries.Employees;
 
 public record EmployeeAccessDto(
-    List<Guid> ProcessIds,
     List<Guid> DeviceIds
 );
 
@@ -31,7 +30,6 @@ public class GetEmployeeAccessHandler(
             return Result.Failure("未找到该员工档案");
 
         var dto = new EmployeeAccessDto(
-            employee.ProcessAccesses.Select(p => p.ProcessId).ToList(),
             employee.DeviceAccesses.Select(d => d.DeviceId).ToList()
         );
 

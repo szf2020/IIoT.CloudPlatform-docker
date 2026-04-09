@@ -10,13 +10,10 @@ namespace IIoT.ProductionService.Commands.Capacities;
 /// <summary>
 /// 业务指令:接收半小时产能上报。
 /// 上位机推送到 HttpApi → 校验设备存在且活跃 → 发布到 MQ → DataWorker 消费落库。
-/// MAC + ClientCode 随 Command 上行,经 Event 透传到 Persist 用例,
-/// 由 Persist 用例在消费侧重新组装为 ClientInstanceId 值对象。
+/// 上位机身份已在轮询认证接口换取 DeviceId,后续数据流转全部以 DeviceId 为唯一标识。
 /// </summary>
 public record ReceiveHourlyCapacityCommand(
     Guid DeviceId,
-    string MacAddress,
-    string ClientCode,
     DateOnly Date,
     string ShiftCode,
     int Hour,
@@ -38,8 +35,8 @@ public class ReceiveHourlyCapacityHandler(
         ReceiveHourlyCapacityCommand request,
         CancellationToken cancellationToken)
     {
-        if (string.IsNullOrWhiteSpace(request.MacAddress) || string.IsNullOrWhiteSpace(request.ClientCode))
-            return Result.Failure("数据接收失败:身份信息不完整(MacAddress + ClientCode 必填)");
+        if (request.DeviceId == Guid.Empty)
+            return Result.Failure("数据接收失败:DeviceId 不能为空");
 
         var deviceExists = await dataQueryService.AnyAsync(
             dataQueryService.Devices.Where(d => d.Id == request.DeviceId && d.IsActive));

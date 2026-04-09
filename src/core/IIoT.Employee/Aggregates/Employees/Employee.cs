@@ -4,11 +4,10 @@ namespace IIoT.Core.Employee.Aggregates.Employees;
 
 /// <summary>
 /// 聚合根:员工/操作员
-/// 包含两级管辖权:工序级(粗颗粒)+ 机台级(精细颗粒)。
+/// 包含机台级管辖权(精细颗粒)。
 /// </summary>
 public class Employee : IAggregateRoot
 {
-    private readonly List<EmployeeProcessAccess> _processAccesses = [];
     private readonly List<EmployeeDeviceAccess> _deviceAccesses = [];
 
     /// <summary>
@@ -67,27 +66,6 @@ public class Employee : IAggregateRoot
     public void Activate() => IsActive = true;
 
     public void Deactivate() => IsActive = false;
-
-    // ── 工序级管辖权 ──────────────────────────────────────
-
-    public IReadOnlyCollection<EmployeeProcessAccess> ProcessAccesses => _processAccesses.AsReadOnly();
-
-    public void AddProcessAccess(Guid processId)
-    {
-        if (!_processAccesses.Any(x => x.ProcessId == processId))
-        {
-            _processAccesses.Add(new EmployeeProcessAccess(this, processId));
-        }
-    }
-
-    public void RemoveProcessAccess(Guid processId)
-    {
-        var access = _processAccesses.FirstOrDefault(x => x.ProcessId == processId);
-        if (access != null)
-        {
-            _processAccesses.Remove(access);
-        }
-    }
 
     // ── 机台级管辖权 ──────────────────────────────────────
 

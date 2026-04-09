@@ -17,8 +17,6 @@ namespace IIoT.ProductionService.Commands.Devices;
 public record DeactivateDeviceCommand(Guid DeviceId) : ICommand<Result<bool>>;
 
 public class DeactivateDeviceHandler(
-    ICurrentUser currentUser,
-    IReadRepository<Employee> employeeRepository,
     IRepository<Device> deviceRepository,
     ICacheService cacheService
 ) : ICommandHandler<DeactivateDeviceCommand, Result<bool>>
@@ -37,24 +35,6 @@ public class DeactivateDeviceHandler(
         // 已停用直接返回成功(幂等)
         if (!device.IsActive)
             return Result.Success(true);
-
-        // ABAC:非 Admin 必须有该工序的管辖权
-        if (currentUser.Role != "Admin")
-        {
-            if (!Guid.TryParse(currentUser.Id, out var userId))
-                return Result.Failure("用户凭证异常");
-
-            var employee = await employeeRepository.GetSingleOrDefaultAsync(
-                new EmployeeWithAccessesSpec(userId),
-                cancellationToken);
-
-            if (employee is null)
-                return Result.Failure("系统中未找到您的员工档案");
-
-            var hasAccess = employee.ProcessAccesses.Any(pa => pa.ProcessId == device.ProcessId);
-            if (!hasAccess)
-                return Result.Failure("越权:您无权停用其他车间/工序的设备");
-        }
 
         device.Deactivate();
 

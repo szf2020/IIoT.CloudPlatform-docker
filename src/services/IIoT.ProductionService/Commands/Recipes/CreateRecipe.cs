@@ -17,7 +17,7 @@ namespace IIoT.ProductionService.Commands.Recipes;
 public record CreateRecipeCommand(
     string RecipeName,
     Guid ProcessId,
-    Guid? DeviceId,
+    Guid DeviceId,
     string ParametersJsonb
 ) : ICommand<Result<Guid>>;
 
@@ -42,6 +42,8 @@ public class CreateRecipeHandler(
             return Result.Failure("配方参数不能为空");
         if (request.ProcessId == Guid.Empty)
             return Result.Failure("归属工序不能为空");
+        if (request.DeviceId == Guid.Empty)
+            return Result.Failure("归属设备不能为空");
 
         // 校验 A:归属工序必须存在
         var processExists = await dataQueryService.AnyAsync(
@@ -50,16 +52,13 @@ public class CreateRecipeHandler(
         if (!processExists)
             return Result.Failure("配方创建失败:指定的归属工序不存在");
 
-        // 校验 B:如指定设备,该设备必须存在且属于当前工序
-        if (request.DeviceId.HasValue)
-        {
-            var deviceValid = await dataQueryService.AnyAsync(
-                dataQueryService.Devices.Where(d =>
-                    d.Id == request.DeviceId.Value && d.ProcessId == request.ProcessId));
+        // 校验 B:设备必须存在且属于当前工序
+        var deviceValid = await dataQueryService.AnyAsync(
+            dataQueryService.Devices.Where(d =>
+                d.Id == request.DeviceId && d.ProcessId == request.ProcessId));
 
-            if (!deviceValid)
-                return Result.Failure("配方创建失败:指定的机台不存在或不属于当前工序");
-        }
+        if (!deviceValid)
+            return Result.Failure("配方创建失败:指定的机台不存在或不属于当前工序");
 
         // 校验 C:防重 — 同工序、同设备、同名的 V1.0 初始版本不能重复
         var duplicateExists = await dataQueryService.AnyAsync(
@@ -85,20 +84,10 @@ public class CreateRecipeHandler(
             if (employee is null)
                 return Result.Failure("系统中未找到您的员工档案");
 
-            if (request.DeviceId.HasValue)
-            {
-                var hasDeviceAccess = employee.DeviceAccesses
-                    .Any(d => d.DeviceId == request.DeviceId.Value);
-                if (!hasDeviceAccess)
-                    return Result.Failure("越权:您没有该具体机台的管辖权,无法创建专属配方");
-            }
-            else
-            {
-                var hasProcessAccess = employee.ProcessAccesses
-                    .Any(p => p.ProcessId == request.ProcessId);
-                if (!hasProcessAccess)
-                    return Result.Failure("越权:您没有该工序的管辖权,无法创建通用配方");
-            }
+            var hasDeviceAccess = employee.DeviceAccesses
+                .Any(d => d.DeviceId == request.DeviceId);
+            if (!hasDeviceAccess)
+                return Result.Failure("越权:您没有该设备的管辖权");
         }
 
         var recipe = new Recipe(recipeName, request.ProcessId, parametersJsonb, request.DeviceId);
@@ -110,11 +99,8 @@ public class CreateRecipeHandler(
         {
             await cacheService.RemoveAsync(
                 $"iiot:recipes:process:v1:{request.ProcessId}", cancellationToken);
-            if (request.DeviceId.HasValue)
-            {
-                await cacheService.RemoveAsync(
-                    $"iiot:recipes:device:v1:{request.DeviceId.Value}", cancellationToken);
-            }
+            await cacheService.RemoveAsync(
+                $"iiot:recipes:device:v1:{request.DeviceId}", cancellationToken);
         }
 
         return Result.Success(recipe.Id);

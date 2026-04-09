@@ -19,7 +19,6 @@ public record OnboardEmployeeCommand(
     string RealName,
     string Password,
     string? RoleName = null,
-    List<Guid>? ProcessIds = null,
     List<Guid>? DeviceIds = null
 ) : ICommand<Result<Guid>>;
 
@@ -63,12 +62,6 @@ public class OnboardEmployeeHandler(
 
         // 第三步:落库 Employee 业务档案;失败则补偿 Identity
         var employee = new Employee(sharedId, request.EmployeeNo, request.RealName);
-
-        if (request.ProcessIds is { Count: > 0 })
-        {
-            foreach (var processId in request.ProcessIds)
-                employee.AddProcessAccess(processId);
-        }
 
         if (request.DeviceIds is { Count: > 0 })
         {

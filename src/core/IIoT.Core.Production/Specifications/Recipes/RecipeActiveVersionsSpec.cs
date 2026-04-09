@@ -9,7 +9,7 @@ namespace IIoT.Core.Production.Specifications.Recipes;
 /// </summary>
 public sealed class RecipeActiveVersionsSpec : Specification<Recipe>
 {
-    public RecipeActiveVersionsSpec(string recipeName, Guid processId, Guid? deviceId)
+    public RecipeActiveVersionsSpec(string recipeName, Guid processId, Guid deviceId)
     {
         FilterCondition = r =>
             r.RecipeName == recipeName

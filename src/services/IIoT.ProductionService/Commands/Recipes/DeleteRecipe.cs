@@ -47,20 +47,10 @@ public class DeleteRecipeHandler(
             if (employee is null)
                 return Result.Failure("系统中未找到您的员工档案");
 
-            if (recipe.DeviceId.HasValue)
-            {
-                var hasDeviceAccess = employee.DeviceAccesses
-                    .Any(d => d.DeviceId == recipe.DeviceId.Value);
-                if (!hasDeviceAccess)
-                    return Result.Failure("越权:您没有该机台的管辖权,禁止删除此配方");
-            }
-            else
-            {
-                var hasProcessAccess = employee.ProcessAccesses
-                    .Any(p => p.ProcessId == recipe.ProcessId);
-                if (!hasProcessAccess)
-                    return Result.Failure("越权:您没有该工序的管辖权,禁止删除此配方");
-            }
+            var hasDeviceAccess = employee.DeviceAccesses
+                .Any(d => d.DeviceId == recipe.DeviceId);
+            if (!hasDeviceAccess)
+                return Result.Failure("越权:您没有该机台的管辖权,禁止删除此配方");
         }
 
         recipeRepository.Delete(recipe);
@@ -71,11 +61,8 @@ public class DeleteRecipeHandler(
             await cacheService.RemoveAsync($"iiot:recipe:v1:{recipe.Id}", cancellationToken);
             await cacheService.RemoveAsync(
                 $"iiot:recipes:process:v1:{recipe.ProcessId}", cancellationToken);
-            if (recipe.DeviceId.HasValue)
-            {
-                await cacheService.RemoveAsync(
-                    $"iiot:recipes:device:v1:{recipe.DeviceId.Value}", cancellationToken);
-            }
+            await cacheService.RemoveAsync(
+                $"iiot:recipes:device:v1:{recipe.DeviceId}", cancellationToken);
         }
 
         return Result.Success(true);
