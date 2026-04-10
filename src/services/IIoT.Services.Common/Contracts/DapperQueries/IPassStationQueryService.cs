@@ -11,7 +11,7 @@ public interface IPassStationQueryService
     /// <summary>
     /// 通用条件查询注液工序过站数据（漏斗式，所有查询入口最终调这一个方法）
     /// </summary>
-    Task<(List<dynamic> Items, int TotalCount)> GetInjectionByConditionAsync(
+    Task<(List<InjectionPassListItemDto> Items, int TotalCount)> GetInjectionByConditionAsync(
         Pagination pagination,
         List<Guid>? deviceIds = null,
         Guid? deviceId = null,
@@ -23,13 +23,41 @@ public interface IPassStationQueryService
     /// <summary>
     /// 根据 ID 获取单条注液过站数据详情（含全部字段）
     /// </summary>
-    Task<dynamic?> GetInjectionDetailAsync(Guid id, CancellationToken cancellationToken = default);
+    Task<InjectionPassDetailDto?> GetInjectionDetailAsync(Guid id, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// 按机台查最近 200 条注液过站数据（分页，无需指定时间范围）
     /// </summary>
-    Task<(List<dynamic> Items, int TotalCount)> GetInjectionLatest200ByDeviceAsync(
+    Task<(List<InjectionPassListItemDto> Items, int TotalCount)> GetInjectionLatest200ByDeviceAsync(
         Guid deviceId,
         Pagination pagination,
         CancellationToken cancellationToken = default);
 }
+
+public record InjectionPassListItemDto(
+    Guid Id,
+    Guid DeviceId,
+    string Barcode,
+    string CellResult,
+    DateTime PreInjectionTime,
+    decimal PreInjectionWeight,
+    DateTime PostInjectionTime,
+    decimal PostInjectionWeight,
+    decimal InjectionVolume,
+    DateTime CompletedTime,
+    DateTime ReceivedAt);
+
+public record InjectionPassDetailDto(
+    Guid Id,
+    Guid DeviceId,
+    string MacAddress,
+    string ClientCode,
+    string CellResult,
+    DateTime CompletedTime,
+    DateTime ReceivedAt,
+    string Barcode,
+    DateTime PreInjectionTime,
+    decimal PreInjectionWeight,
+    DateTime PostInjectionTime,
+    decimal PostInjectionWeight,
+    decimal InjectionVolume);

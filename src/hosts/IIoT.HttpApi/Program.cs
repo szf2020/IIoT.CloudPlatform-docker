@@ -1,5 +1,6 @@
 using IIoT.HttpApi;
 using IIoT.Infrastructure.Logging;
+using IIoT.SharedKernel.Paging;
 using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -9,7 +10,12 @@ builder.AddServiceDefaults();
 builder.AddApplicationService();
 builder.AddWebServices();
 
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.Converters.Add(
+            new PagedListJsonConverterFactory());
+    });
 builder.Services.AddOpenApi();
 
 var app = builder.Build();

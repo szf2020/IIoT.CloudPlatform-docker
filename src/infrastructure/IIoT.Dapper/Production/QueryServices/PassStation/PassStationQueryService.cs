@@ -6,7 +6,7 @@ namespace IIoT.Dapper.Production.QueryServices.PassStation;
 
 public class PassStationQueryService(IDbConnectionFactory connectionFactory) : IPassStationQueryService
 {
-    public async Task<(List<dynamic> Items, int TotalCount)> GetInjectionByConditionAsync(
+    public async Task<(List<InjectionPassListItemDto> Items, int TotalCount)> GetInjectionByConditionAsync(
         Pagination pagination,
         List<Guid>? deviceIds = null,
         Guid? deviceId = null,
@@ -51,10 +51,17 @@ public class PassStationQueryService(IDbConnectionFactory connectionFactory) : I
         }
 
         var dataSql = $@"
-            SELECT id, device_id, barcode, cell_result,
-                   pre_injection_time, pre_injection_weight,
-                   post_injection_time, post_injection_weight,
-                   injection_volume, completed_time, received_at
+            SELECT id                   AS Id,
+                   device_id            AS DeviceId,
+                   barcode              AS Barcode,
+                   cell_result          AS CellResult,
+                   pre_injection_time   AS PreInjectionTime,
+                   pre_injection_weight AS PreInjectionWeight,
+                   post_injection_time  AS PostInjectionTime,
+                   post_injection_weight AS PostInjectionWeight,
+                   injection_volume     AS InjectionVolume,
+                   completed_time       AS CompletedTime,
+                   received_at          AS ReceivedAt
             FROM pass_data_injection
             {conditions}
             ORDER BY completed_time DESC
@@ -69,23 +76,38 @@ public class PassStationQueryService(IDbConnectionFactory connectionFactory) : I
         var command = new CommandDefinition(dataSql, parameters, cancellationToken: cancellationToken);
         var countCommand = new CommandDefinition(countSql, parameters, cancellationToken: cancellationToken);
 
-        var items = (await connection.QueryAsync(command)).ToList();
+        var items = (await connection.QueryAsync<InjectionPassListItemDto>(command)).ToList();
         var totalCount = await connection.ExecuteScalarAsync<int>(countCommand);
 
         return (items, totalCount);
     }
 
-    public async Task<dynamic?> GetInjectionDetailAsync(Guid id, CancellationToken cancellationToken = default)
+    public async Task<InjectionPassDetailDto?> GetInjectionDetailAsync(Guid id, CancellationToken cancellationToken = default)
     {
         using var connection = connectionFactory.CreateConnection();
 
-        var sql = "SELECT * FROM pass_data_injection WHERE id = @Id";
+        const string sql = @"
+            SELECT id                   AS Id,
+                   device_id            AS DeviceId,
+                   mac_address          AS MacAddress,
+                   client_code          AS ClientCode,
+                   cell_result          AS CellResult,
+                   completed_time       AS CompletedTime,
+                   received_at          AS ReceivedAt,
+                   barcode              AS Barcode,
+                   pre_injection_time   AS PreInjectionTime,
+                   pre_injection_weight AS PreInjectionWeight,
+                   post_injection_time  AS PostInjectionTime,
+                   post_injection_weight AS PostInjectionWeight,
+                   injection_volume     AS InjectionVolume
+            FROM pass_data_injection
+            WHERE id = @Id";
         var command = new CommandDefinition(sql, new { Id = id }, cancellationToken: cancellationToken);
 
-        return await connection.QuerySingleOrDefaultAsync(command);
+        return await connection.QuerySingleOrDefaultAsync<InjectionPassDetailDto>(command);
     }
 
-    public async Task<(List<dynamic> Items, int TotalCount)> GetInjectionLatest200ByDeviceAsync(
+    public async Task<(List<InjectionPassListItemDto> Items, int TotalCount)> GetInjectionLatest200ByDeviceAsync(
         Guid deviceId,
         Pagination pagination,
         CancellationToken cancellationToken = default)
@@ -95,21 +117,28 @@ public class PassStationQueryService(IDbConnectionFactory connectionFactory) : I
         // CTE 先锁定该机台最新 200 条，外层再分页，前端最多翻到第 200 条
         var dataSql = @"
             WITH latest AS (
-                SELECT id, device_id, barcode, cell_result,
-                       pre_injection_time, pre_injection_weight,
-                       post_injection_time, post_injection_weight,
-                       injection_volume, completed_time, received_at,
+                SELECT id                   AS Id,
+                       device_id            AS DeviceId,
+                       barcode              AS Barcode,
+                       cell_result          AS CellResult,
+                       pre_injection_time   AS PreInjectionTime,
+                       pre_injection_weight AS PreInjectionWeight,
+                       post_injection_time  AS PostInjectionTime,
+                       post_injection_weight AS PostInjectionWeight,
+                       injection_volume     AS InjectionVolume,
+                       completed_time       AS CompletedTime,
+                       received_at          AS ReceivedAt,
                        ROW_NUMBER() OVER (ORDER BY completed_time DESC) AS rn
                 FROM pass_data_injection
                 WHERE device_id = @DeviceId
             )
-            SELECT id, device_id, barcode, cell_result,
-                   pre_injection_time, pre_injection_weight,
-                   post_injection_time, post_injection_weight,
-                   injection_volume, completed_time, received_at
+            SELECT Id, DeviceId, Barcode, CellResult,
+                   PreInjectionTime, PreInjectionWeight,
+                   PostInjectionTime, PostInjectionWeight,
+                   InjectionVolume, CompletedTime, ReceivedAt
             FROM latest
             WHERE rn <= 200
-            ORDER BY completed_time DESC
+            ORDER BY CompletedTime DESC
             OFFSET @Offset ROWS FETCH NEXT @PageSize ROWS ONLY";
 
         var countSql = @"
@@ -123,7 +152,7 @@ public class PassStationQueryService(IDbConnectionFactory connectionFactory) : I
         var command      = new CommandDefinition(dataSql, parameters, cancellationToken: cancellationToken);
         var countCommand = new CommandDefinition(countSql, new { DeviceId = deviceId }, cancellationToken: cancellationToken);
 
-        var items      = (await connection.QueryAsync(command)).ToList();
+        var items      = (await connection.QueryAsync<InjectionPassListItemDto>(command)).ToList();
         var totalCount = await connection.ExecuteScalarAsync<int>(countCommand);
 
         return (items, totalCount);

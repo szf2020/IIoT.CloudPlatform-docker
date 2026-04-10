@@ -1,4 +1,4 @@
-using IIoT.Services.Common.Contracts;
+using IIoT.Services.Common.Contracts.DapperQueries;
 using IIoT.Services.Common.Events;
 using IIoT.SharedKernel.Messaging;
 using IIoT.SharedKernel.Result;
@@ -26,7 +26,7 @@ public record ReceiveHourlyCapacityCommand(
 ) : ICommand<Result<bool>>;
 
 public class ReceiveHourlyCapacityHandler(
-    IDataQueryService dataQueryService,
+    IDeviceIdentityQueryService deviceIdentityQuery,
     IMapper mapper,
     IPublishEndpoint publishEndpoint
 ) : ICommandHandler<ReceiveHourlyCapacityCommand, Result<bool>>
@@ -38,11 +38,10 @@ public class ReceiveHourlyCapacityHandler(
         if (request.DeviceId == Guid.Empty)
             return Result.Failure("数据接收失败:DeviceId 不能为空");
 
-        var deviceExists = await dataQueryService.AnyAsync(
-            dataQueryService.Devices.Where(d => d.Id == request.DeviceId && d.IsActive));
-
-        if (!deviceExists)
-            return Result.Failure("数据接收失败:设备不存在或已停用");
+        var exists = await deviceIdentityQuery.ExistsAsync(
+            request.DeviceId, cancellationToken);
+        if (!exists)
+            return Result.Failure("数据接收失败:设备不存在");
 
         var @event = mapper.Map<HourlyCapacityReceivedEvent>(request);
         await publishEndpoint.Publish(@event, cancellationToken);

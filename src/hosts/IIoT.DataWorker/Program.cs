@@ -1,4 +1,5 @@
 using IIoT.Dapper.Bootstrap;
+using IIoT.DataWorker.Consumers;
 using IIoT.Infrastructure;
 using IIoT.Infrastructure.Logging;
 using IIoT.ProductionService.Commands.Capacities;
@@ -29,15 +30,13 @@ builder.Services.AddMediatR(cfg =>
 });
 
 // 6. MassTransit + RabbitMQ
-//    Consumer 注册暂时注释隔离 — 待 5.9 批次重建 HourlyCapacityConsumer /
-//    PassDataInjectionConsumer / DeviceLogConsumer 之后打开
 builder.Services.AddMassTransit(x =>
 {
     x.SetKebabCaseEndpointNameFormatter();
 
-    // x.AddConsumer<PassDataInjectionConsumer>(cfg => { cfg.ConcurrentMessageLimit = 4; });
-    // x.AddConsumer<DeviceLogConsumer>(cfg => { cfg.ConcurrentMessageLimit = 3; });
-    // x.AddConsumer<HourlyCapacityConsumer>(cfg => { cfg.ConcurrentMessageLimit = 1; });
+    x.AddConsumer<PassDataInjectionConsumer>(cfg => { cfg.ConcurrentMessageLimit = 4; });
+    x.AddConsumer<DeviceLogConsumer>(cfg => { cfg.ConcurrentMessageLimit = 3; });
+    x.AddConsumer<HourlyCapacityConsumer>(cfg => { cfg.ConcurrentMessageLimit = 1; });
 
     x.UsingRabbitMq((context, cfg) =>
     {

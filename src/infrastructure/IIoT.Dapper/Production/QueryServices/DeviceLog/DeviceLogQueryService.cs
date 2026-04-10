@@ -6,7 +6,7 @@ namespace IIoT.Dapper.Production.QueryServices.DeviceLog;
 
 public class DeviceLogQueryService(IDbConnectionFactory connectionFactory) : IDeviceLogQueryService
 {
-    public async Task<(List<dynamic> Items, int TotalCount)> GetLogsByConditionAsync(
+    public async Task<(List<DeviceLogListItemDto> Items, int TotalCount)> GetLogsByConditionAsync(
         Pagination pagination,
         Guid deviceId,
         string? level = null,
@@ -48,8 +48,13 @@ public class DeviceLogQueryService(IDbConnectionFactory connectionFactory) : IDe
         }
 
         var dataSql = $@"
-            SELECT l.id, l.device_id, d.device_name,
-                   l.level, l.message, l.log_time, l.received_at
+            SELECT l.id           AS Id,
+                   l.device_id    AS DeviceId,
+                   d.device_name  AS DeviceName,
+                   l.level        AS Level,
+                   l.message      AS Message,
+                   l.log_time     AS LogTime,
+                   l.received_at  AS ReceivedAt
             FROM device_logs l
             INNER JOIN devices d ON l.device_id = d.id
             {conditions}
@@ -68,7 +73,7 @@ public class DeviceLogQueryService(IDbConnectionFactory connectionFactory) : IDe
         var command = new CommandDefinition(dataSql, parameters, cancellationToken: cancellationToken);
         var countCommand = new CommandDefinition(countSql, parameters, cancellationToken: cancellationToken);
 
-        var items = (await connection.QueryAsync(command)).ToList();
+        var items = (await connection.QueryAsync<DeviceLogListItemDto>(command)).ToList();
         var totalCount = await connection.ExecuteScalarAsync<int>(countCommand);
 
         return (items, totalCount);

@@ -1,4 +1,4 @@
-﻿using IIoT.Services.Common.Contracts;
+﻿using IIoT.Services.Common.Contracts.DapperQueries;
 using IIoT.Services.Common.Events;
 using IIoT.SharedKernel.Messaging;
 using IIoT.SharedKernel.Result;
@@ -19,7 +19,7 @@ public record ReceiveDeviceLogCommand(
 ) : ICommand<Result<bool>>;
 
 public class ReceiveDeviceLogHandler(
-    IDataQueryService dataQueryService,
+    IDeviceIdentityQueryService deviceIdentityQuery,
     IPublishEndpoint publishEndpoint
 ) : ICommandHandler<ReceiveDeviceLogCommand, Result<bool>>
 {
@@ -33,11 +33,10 @@ public class ReceiveDeviceLogHandler(
         if (request.Logs is null || request.Logs.Count == 0)
             return Result.Failure("数据接收失败:日志列表不能为空");
 
-        var deviceExists = await dataQueryService.AnyAsync(
-            dataQueryService.Devices.Where(d => d.Id == request.DeviceId && d.IsActive));
-
-        if (!deviceExists)
-            return Result.Failure("数据接收失败:设备不存在或已停用");
+        var exists = await deviceIdentityQuery.ExistsAsync(
+            request.DeviceId, cancellationToken);
+        if (!exists)
+            return Result.Failure("数据接收失败:设备不存在");
 
         var @event = new DeviceLogReceivedEvent
         {

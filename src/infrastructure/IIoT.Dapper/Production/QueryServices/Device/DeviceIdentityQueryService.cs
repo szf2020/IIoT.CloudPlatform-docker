@@ -1,0 +1,58 @@
+using Dapper;
+using IIoT.Services.Common.Contracts;
+using IIoT.Services.Common.Contracts.DapperQueries;
+
+namespace IIoT.Dapper.Production.QueryServices.Device;
+
+public class DeviceIdentityQueryService(
+    IDbConnectionFactory connectionFactory,
+    ICacheService cacheService) : IDeviceIdentityQueryService
+{
+    private const string CacheKeyPrefix = "iiot:device:identity:v1:";
+    private static readonly TimeSpan CacheTtl = TimeSpan.FromHours(2);
+
+    public async Task<DeviceIdentitySnapshot?> GetByDeviceIdAsync(
+        Guid deviceId,
+        CancellationToken cancellationToken = default)
+    {
+        if (deviceId == Guid.Empty) return null;
+
+        var cacheKey = CacheKeyPrefix + deviceId;
+
+        var cached = await cacheService.GetAsync<DeviceIdentitySnapshot>(
+            cacheKey, cancellationToken);
+        if (cached is not null) return cached;
+
+        const string sql = @"
+            SELECT
+                id           AS DeviceId,
+                mac_address  AS MacAddress,
+                client_code  AS ClientCode
+            FROM devices
+            WHERE id = @DeviceId
+            LIMIT 1";
+
+        using var connection = connectionFactory.CreateConnection();
+
+        var cmd = new CommandDefinition(
+            sql,
+            new { DeviceId = deviceId },
+            cancellationToken: cancellationToken);
+
+        var snapshot = await connection
+            .QuerySingleOrDefaultAsync<DeviceIdentitySnapshot>(cmd);
+
+        if (snapshot is not null)
+            await cacheService.SetAsync(cacheKey, snapshot, CacheTtl, cancellationToken);
+
+        return snapshot;
+    }
+
+    public async Task<bool> ExistsAsync(
+        Guid deviceId,
+        CancellationToken cancellationToken = default)
+    {
+        var snapshot = await GetByDeviceIdAsync(deviceId, cancellationToken);
+        return snapshot is not null;
+    }
+}

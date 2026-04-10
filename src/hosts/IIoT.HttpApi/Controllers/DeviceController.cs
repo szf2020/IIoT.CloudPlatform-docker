@@ -37,12 +37,12 @@ public class DeviceController : ApiControllerBase
     }
 
     /// <summary>
-    /// 获取全量活跃设备列表 (供管辖权分配下拉选择器使用,不做 ABAC 数据级过滤)
+    /// 获取全量设备列表 (供管辖权分配下拉选择器使用,不做 ABAC 数据级过滤)
     /// </summary>
     [HttpGet("all")]
     public async Task<IActionResult> GetAllActive()
     {
-        var result = await Sender.Send(new GetAllActiveDevicesQuery());
+        var result = await Sender.Send(new GetAllDevicesQuery());
         return result.IsSuccess ? Ok(result.Value) : BadRequest(result.Errors);
     }
 
@@ -67,12 +67,12 @@ public class DeviceController : ApiControllerBase
     }
 
     /// <summary>
-    /// 停用设备 (软删除控制)
+    /// 删除设备(硬删除)
     /// </summary>
     [HttpDelete("{id}")]
-    public async Task<IActionResult> Deactivate([FromRoute] Guid id)
+    public async Task<IActionResult> Delete([FromRoute] Guid id)
     {
-        var command = new DeactivateDeviceCommand(id);
+        var command = new DeleteDeviceCommand(id);
         var result = await Sender.Send(command);
         return result.IsSuccess ? Ok(result.Value) : BadRequest(result.Errors);
     }

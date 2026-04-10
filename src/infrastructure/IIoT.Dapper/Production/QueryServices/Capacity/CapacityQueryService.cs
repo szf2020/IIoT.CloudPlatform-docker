@@ -155,7 +155,7 @@ public class CapacityQueryService(IDbConnectionFactory connectionFactory) : ICap
 
     // ── 4. 云端后台分页（不加 plcName 过滤，后台管理用途，展示全量数据）──
 
-    public async Task<(List<dynamic> Items, int TotalCount)> GetDailyPagedAsync(
+    public async Task<(List<DailyCapacityPagedItemDto> Items, int TotalCount)> GetDailyPagedAsync(
         Pagination pagination,
         DateOnly? date = null,
         Guid? deviceId = null,
@@ -180,16 +180,16 @@ public class CapacityQueryService(IDbConnectionFactory connectionFactory) : ICap
 
         var dataSql = $@"
             SELECT
-                h.device_id,
-                d.device_name,
-                h.date,
-                COALESCE(SUM(h.total_count), 0) AS total_count,
-                COALESCE(SUM(h.ok_count),    0) AS ok_count,
-                COALESCE(SUM(h.ng_count),    0) AS ng_count,
+                h.device_id    AS DeviceId,
+                d.device_name  AS DeviceName,
+                h.date         AS Date,
+                COALESCE(SUM(h.total_count), 0) AS TotalCount,
+                COALESCE(SUM(h.ok_count),    0) AS OkCount,
+                COALESCE(SUM(h.ng_count),    0) AS NgCount,
                 CASE WHEN SUM(h.total_count) > 0
                      THEN ROUND(SUM(h.ok_count) * 100.0 / SUM(h.total_count), 2)
-                     ELSE 0 END AS ok_rate,
-                MAX(h.reported_at) AS reported_at
+                     ELSE 0 END AS OkRate,
+                MAX(h.reported_at) AS ReportedAt
             FROM hourly_capacity h
             INNER JOIN devices d ON h.device_id = d.id
             {conditions}
@@ -212,7 +212,7 @@ public class CapacityQueryService(IDbConnectionFactory connectionFactory) : ICap
         var dataCmd = new CommandDefinition(dataSql, parameters, cancellationToken: cancellationToken);
         var countCmd = new CommandDefinition(countSql, parameters, cancellationToken: cancellationToken);
 
-        var items = (await connection.QueryAsync(dataCmd)).ToList();
+        var items = (await connection.QueryAsync<DailyCapacityPagedItemDto>(dataCmd)).ToList();
         var totalCount = await connection.ExecuteScalarAsync<int>(countCmd);
 
         return (items, totalCount);

@@ -36,11 +36,7 @@ public class DeviceConfiguration : IEntityTypeConfiguration<Device>
             .IsRequired()
             .HasColumnName("process_id");
 
-        builder.Property(d => d.IsActive)
-            .IsRequired()
-            .HasColumnName("is_active");
-
-        // 联合唯一:同一宿主机上同一 ClientCode 的实例只有一个
+        // 联合唯一
         builder.HasIndex(d => new { d.Instance.MacAddress, d.Instance.ClientCode })
             .IsUnique()
             .HasDatabaseName("ix_devices_mac_address_client_code");

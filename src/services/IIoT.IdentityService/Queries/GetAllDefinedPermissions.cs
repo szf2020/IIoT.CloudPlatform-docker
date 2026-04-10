@@ -31,7 +31,7 @@ public class GetAllDefinedPermissionsHandler(
         "Process.Read", "Process.Create", "Process.Update", "Process.Delete",
 
         // 设备管理
-        "Device.Read", "Device.Create", "Device.Update", "Device.Deactivate",
+        "Device.Read", "Device.Create", "Device.Update", "Device.Delete",
 
         // 配方管理
         "Recipe.Read", "Recipe.Create", "Recipe.Update",

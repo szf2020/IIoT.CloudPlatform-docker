@@ -14,8 +14,7 @@ namespace IIoT.ProductionService.Queries.Devices;
 public record DeviceIdentityDto(
     Guid Id,
     string DeviceName,
-    Guid ProcessId,
-    bool IsActive
+    Guid ProcessId
 );
 
 /// <summary>
@@ -54,8 +53,7 @@ public class GetDeviceByInstanceHandler(
         var dto = new DeviceIdentityDto(
             device.Id,
             device.DeviceName,
-            device.ProcessId,
-            device.IsActive
+            device.ProcessId
         );
 
         await cacheService.SetAsync(cacheKey, dto, TimeSpan.FromHours(2), cancellationToken);

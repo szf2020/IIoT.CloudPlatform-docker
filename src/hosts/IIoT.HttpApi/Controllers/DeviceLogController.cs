@@ -41,7 +41,7 @@ public class DeviceLogController : ApiControllerBase
         [FromQuery] Guid deviceId,
         [FromQuery] string? level = null)
     {
-        var query = new GetLogsByDeviceAndLevelQuery(pagination, deviceId, level);
+        var query = new GetDeviceLogsQuery(pagination, deviceId, Level: level);
         var result = await Sender.Send(query);
         return result.IsSuccess ? Ok(result.Value) : BadRequest(result.Errors);
     }
@@ -55,7 +55,7 @@ public class DeviceLogController : ApiControllerBase
         [FromQuery] Guid deviceId,
         [FromQuery] string keyword)
     {
-        var query = new GetLogsByDeviceAndKeywordQuery(pagination, deviceId, keyword);
+        var query = new GetDeviceLogsQuery(pagination, deviceId, Keyword: keyword);
         var result = await Sender.Send(query);
         return result.IsSuccess ? Ok(result.Value) : BadRequest(result.Errors);
     }
@@ -69,7 +69,10 @@ public class DeviceLogController : ApiControllerBase
         [FromQuery] Guid deviceId,
         [FromQuery] DateOnly date)
     {
-        var query = new GetLogsByDeviceAndDateQuery(pagination, deviceId, date);
+        var start = date.ToDateTime(TimeOnly.MinValue);
+        var end   = date.ToDateTime(TimeOnly.MaxValue);
+        var query = new GetDeviceLogsQuery(pagination, deviceId,
+            StartTime: start, EndTime: end);
         var result = await Sender.Send(query);
         return result.IsSuccess ? Ok(result.Value) : BadRequest(result.Errors);
     }
@@ -84,7 +87,8 @@ public class DeviceLogController : ApiControllerBase
         [FromQuery] DateTime startTime,
         [FromQuery] DateTime endTime)
     {
-        var query = new GetLogsByDeviceAndTimeRangeQuery(pagination, deviceId, startTime, endTime);
+        var query = new GetDeviceLogsQuery(pagination, deviceId,
+            StartTime: startTime, EndTime: endTime);
         var result = await Sender.Send(query);
         return result.IsSuccess ? Ok(result.Value) : BadRequest(result.Errors);
     }
@@ -99,7 +103,10 @@ public class DeviceLogController : ApiControllerBase
         [FromQuery] DateOnly date,
         [FromQuery] string keyword)
     {
-        var query = new GetLogsByDeviceDateAndKeywordQuery(pagination, deviceId, date, keyword);
+        var start = date.ToDateTime(TimeOnly.MinValue);
+        var end   = date.ToDateTime(TimeOnly.MaxValue);
+        var query = new GetDeviceLogsQuery(pagination, deviceId,
+            Keyword: keyword, StartTime: start, EndTime: end);
         var result = await Sender.Send(query);
         return result.IsSuccess ? Ok(result.Value) : BadRequest(result.Errors);
     }

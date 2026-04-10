@@ -23,7 +23,7 @@ public sealed record PassDataInjectionWriteModel(
 
 public interface IPassDataInjectionRecordRepository
 {
-    Task InsertAsync(
-        PassDataInjectionWriteModel item,
+    Task InsertBatchAsync(
+        IReadOnlyCollection<PassDataInjectionWriteModel> items,
         CancellationToken cancellationToken = default);
 }

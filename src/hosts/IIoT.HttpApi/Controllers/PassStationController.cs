@@ -19,28 +19,14 @@ public class PassStationController : ApiControllerBase
     // ==========================================
 
     /// <summary>
-    /// 接收单条注液工序过站数据
+    /// 批量接收注液工序过站数据
     /// </summary>
-    [HttpPost("injection")]
-    public async Task<IActionResult> ReceiveInjection([FromBody] ReceiveInjectionPassCommand command)
+    [HttpPost("injection/batch")]
+    public async Task<IActionResult> ReceiveInjectionBatch(
+        [FromBody] ReceiveInjectionPassCommand command)
     {
         var result = await Sender.Send(command);
         return result.IsSuccess ? Ok(result.Value) : BadRequest(result.Errors);
-    }
-
-    /// <summary>
-    /// 批量接收注液工序过站数据（边缘端补传用）
-    /// </summary>
-    [HttpPost("injection/batch")]
-    public async Task<IActionResult> ReceiveInjectionBatch([FromBody] List<ReceiveInjectionPassCommand> commands)
-    {
-        foreach (var command in commands)
-        {
-            var result = await Sender.Send(command);
-            if (!result.IsSuccess) return BadRequest(result.Errors);
-        }
-
-        return Ok(new { message = $"已接收 {commands.Count} 条注液过站数据" });
     }
 
     // ==========================================
@@ -56,7 +42,8 @@ public class PassStationController : ApiControllerBase
         [FromQuery] Guid processId,
         [FromQuery] string barcode)
     {
-        var query = new GetInjectionByBarcodeAndProcessQuery(pagination, processId, barcode);
+        var query = new GetInjectionListQuery(pagination,
+            ProcessId: processId, Barcode: barcode);
         var result = await Sender.Send(query);
         return result.IsSuccess ? Ok(result.Value) : BadRequest(result.Errors);
     }
@@ -71,7 +58,9 @@ public class PassStationController : ApiControllerBase
         [FromQuery] DateTime startTime,
         [FromQuery] DateTime endTime)
     {
-        var query = new GetInjectionByTimeAndProcessQuery(pagination, processId, startTime, endTime);
+        var query = new GetInjectionListQuery(pagination,
+            ProcessId: processId,
+            StartTime: startTime, EndTime: endTime);
         var result = await Sender.Send(query);
         return result.IsSuccess ? Ok(result.Value) : BadRequest(result.Errors);
     }
@@ -85,7 +74,8 @@ public class PassStationController : ApiControllerBase
         [FromQuery] Guid deviceId,
         [FromQuery] string barcode)
     {
-        var query = new GetInjectionByDeviceAndBarcodeQuery(pagination, deviceId, barcode);
+        var query = new GetInjectionListQuery(pagination,
+            DeviceId: deviceId, Barcode: barcode);
         var result = await Sender.Send(query);
         return result.IsSuccess ? Ok(result.Value) : BadRequest(result.Errors);
     }
@@ -100,7 +90,9 @@ public class PassStationController : ApiControllerBase
         [FromQuery] DateTime startTime,
         [FromQuery] DateTime endTime)
     {
-        var query = new GetInjectionByDeviceAndTimeQuery(pagination, deviceId, startTime, endTime);
+        var query = new GetInjectionListQuery(pagination,
+            DeviceId: deviceId,
+            StartTime: startTime, EndTime: endTime);
         var result = await Sender.Send(query);
         return result.IsSuccess ? Ok(result.Value) : BadRequest(result.Errors);
     }

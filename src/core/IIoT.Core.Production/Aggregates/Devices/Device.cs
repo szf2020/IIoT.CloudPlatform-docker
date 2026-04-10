@@ -30,7 +30,6 @@ public class Device : IAggregateRoot
         DeviceName = deviceName.Trim();
         Instance = instance;
         ProcessId = processId;
-        IsActive = true;
     }
 
     public Guid Id { get; private set; }
@@ -44,8 +43,6 @@ public class Device : IAggregateRoot
     public ClientInstanceId Instance { get; private set; }
 
     public Guid ProcessId { get; private set; }
-
-    public bool IsActive { get; private set; }
 
     // ── 行为 ──────────────────────────────────────────────
 
@@ -61,8 +58,4 @@ public class Device : IAggregateRoot
             throw new ArgumentException("ProcessId 不能为空。", nameof(newProcessId));
         ProcessId = newProcessId;
     }
-
-    public void Activate() => IsActive = true;
-
-    public void Deactivate() => IsActive = false;
 }

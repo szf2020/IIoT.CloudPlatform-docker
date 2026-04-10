@@ -10,7 +10,7 @@ public interface IDeviceLogQueryService
     /// <summary>
     /// 通用条件查询设备日志（漏斗式，所有查询入口最终调这一个方法）
     /// </summary>
-    Task<(List<dynamic> Items, int TotalCount)> GetLogsByConditionAsync(
+    Task<(List<DeviceLogListItemDto> Items, int TotalCount)> GetLogsByConditionAsync(
         Pagination pagination,
         Guid deviceId,
         string? level = null,
@@ -19,3 +19,12 @@ public interface IDeviceLogQueryService
         DateTime? endTime = null,
         CancellationToken cancellationToken = default);
 }
+
+public record DeviceLogListItemDto(
+    Guid Id,
+    Guid DeviceId,
+    string DeviceName,
+    string Level,
+    string Message,
+    DateTime LogTime,
+    DateTime ReceivedAt);

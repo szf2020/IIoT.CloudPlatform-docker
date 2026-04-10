@@ -14,8 +14,7 @@ namespace IIoT.ProductionService.Queries.Devices;
 public record DeviceListItemDto(
     Guid Id,
     string DeviceName,
-    Guid ProcessId,
-    bool IsActive
+    Guid ProcessId
 );
 
 [AuthorizeRequirement("Device.Read")]
@@ -65,8 +64,7 @@ public class GetMyDevicesPagedHandler(
         var dtos = list.Select(d => new DeviceListItemDto(
             d.Id,
             d.DeviceName,
-            d.ProcessId,
-            d.IsActive
+            d.ProcessId
         )).ToList();
 
         var pagedList = new PagedList<DeviceListItemDto>(dtos, totalCount, request.PaginationParams);

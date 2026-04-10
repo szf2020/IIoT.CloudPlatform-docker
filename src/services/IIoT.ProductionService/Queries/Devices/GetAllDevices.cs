@@ -1,5 +1,4 @@
-﻿using IIoT.Core.Production.Aggregates.Devices;
-using IIoT.Core.Production.Specifications.Devices;
+using IIoT.Core.Production.Aggregates.Devices;
 using IIoT.Services.Common.Attributes;
 using IIoT.Services.Common.Contracts;
 using IIoT.SharedKernel.Messaging;
@@ -15,22 +14,21 @@ public record DeviceSelectDto(
 );
 
 [AuthorizeRequirement("Device.Read")]
-public record GetAllActiveDevicesQuery() : IQuery<Result<List<DeviceSelectDto>>>;
+public record GetAllDevicesQuery() : IQuery<Result<List<DeviceSelectDto>>>;
 
-public class GetAllActiveDevicesHandler(
+public class GetAllDevicesHandler(
     IReadRepository<Device> deviceRepository,
     ICacheService cacheService
-) : IQueryHandler<GetAllActiveDevicesQuery, Result<List<DeviceSelectDto>>>
+) : IQueryHandler<GetAllDevicesQuery, Result<List<DeviceSelectDto>>>
 {
     private const string CacheKey = "iiot:devices:v1:all-active";
 
-    public async Task<Result<List<DeviceSelectDto>>> Handle(GetAllActiveDevicesQuery request, CancellationToken cancellationToken)
+    public async Task<Result<List<DeviceSelectDto>>> Handle(GetAllDevicesQuery request, CancellationToken cancellationToken)
     {
         var cached = await cacheService.GetAsync<List<DeviceSelectDto>>(CacheKey, cancellationToken);
         if (cached != null) return Result.Success(cached);
 
-        var spec = new DeviceAllActiveSpec();
-        var list = await deviceRepository.GetListAsync(spec, cancellationToken);
+        var list = await deviceRepository.GetListAsync(cancellationToken: cancellationToken);
 
         var dtos = list.Select(d => new DeviceSelectDto(
             d.Id, d.DeviceName, d.ProcessId

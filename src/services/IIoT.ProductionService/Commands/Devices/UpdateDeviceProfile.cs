@@ -49,6 +49,8 @@ public class UpdateDeviceProfileHandler(
             await cacheService.RemoveAsync(
                 $"iiot:devices:process:v1:{device.ProcessId}", cancellationToken);
             await cacheService.RemoveAsync("iiot:devices:v1:all-active", cancellationToken);
+            await cacheService.RemoveAsync(
+                $"iiot:device:identity:v1:{device.Id}", cancellationToken);
         }
 
         return Result.Success(true);

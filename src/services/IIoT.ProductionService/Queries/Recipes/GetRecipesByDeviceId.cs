@@ -44,7 +44,7 @@ public class GetRecipesByDeviceIdHandler(
 
         // 2. 断言设备存在且激活
         var deviceExists = await dataQueryService.AnyAsync(
-            dataQueryService.Devices.Where(d => d.Id == request.DeviceId && d.IsActive));
+            dataQueryService.Devices.Where(d => d.Id == request.DeviceId));
 
         if (!deviceExists)
             return Result.Failure("查询失败:设备不存在或已停用");

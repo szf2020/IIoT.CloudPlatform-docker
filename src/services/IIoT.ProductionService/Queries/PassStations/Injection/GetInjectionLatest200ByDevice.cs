@@ -11,29 +11,20 @@ namespace IIoT.ProductionService.Queries.PassStations.Injection;
 public record GetInjectionLatest200ByDeviceQuery(
     Guid DeviceId,
     Pagination PaginationParams
-) : IQuery<Result<object>>;
+) : IQuery<Result<PagedList<InjectionPassListItemDto>>>;
 
 public class GetInjectionLatest200ByDeviceHandler(
     IPassStationQueryService queryService
-) : IQueryHandler<GetInjectionLatest200ByDeviceQuery, Result<object>>
+) : IQueryHandler<GetInjectionLatest200ByDeviceQuery, Result<PagedList<InjectionPassListItemDto>>>
 {
-    public async Task<Result<object>> Handle(GetInjectionLatest200ByDeviceQuery request, CancellationToken cancellationToken)
+    public async Task<Result<PagedList<InjectionPassListItemDto>>> Handle(GetInjectionLatest200ByDeviceQuery request, CancellationToken cancellationToken)
     {
         var (items, totalCount) = await queryService.GetInjectionLatest200ByDeviceAsync(
             request.DeviceId,
             request.PaginationParams,
             cancellationToken);
 
-        return Result.Success<object>(new
-        {
-            Items = items,
-            MetaData = new
-            {
-                TotalCount  = totalCount,
-                PageSize    = request.PaginationParams.PageSize,
-                CurrentPage = request.PaginationParams.PageNumber,
-                TotalPages  = (int)Math.Ceiling(totalCount / (double)request.PaginationParams.PageSize)
-            }
-        });
+        var pagedList = new PagedList<InjectionPassListItemDto>(items, totalCount, request.PaginationParams);
+        return Result.Success(pagedList);
     }
 }

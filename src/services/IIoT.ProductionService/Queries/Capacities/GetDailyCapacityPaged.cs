@@ -13,19 +13,22 @@ public record GetDailyCapacityPagedQuery(
     Pagination PaginationParams,
     DateOnly? Date = null,
     Guid? DeviceId = null
-) : IQuery<Result<object>>;
+) : IQuery<Result<PagedList<DailyCapacityPagedItemDto>>>;
 
 public class GetDailyCapacityPagedHandler(
     ICapacityQueryService queryService,
     ICacheService cacheService
-) : IQueryHandler<GetDailyCapacityPagedQuery, Result<object>>
+) : IQueryHandler<GetDailyCapacityPagedQuery, Result<PagedList<DailyCapacityPagedItemDto>>>
 {
-    public async Task<Result<object>> Handle(GetDailyCapacityPagedQuery request, CancellationToken cancellationToken)
+    public async Task<Result<PagedList<DailyCapacityPagedItemDto>>> Handle(
+        GetDailyCapacityPagedQuery request,
+        CancellationToken cancellationToken)
     {
         var cacheKey = $"iiot:capacity:paged:v1:{request.Date:yyyyMMdd}:{request.DeviceId}:{request.PaginationParams.PageNumber}:{request.PaginationParams.PageSize}";
 
-        var cached = await cacheService.GetAsync<object>(cacheKey, cancellationToken);
-        if (cached != null)
+        var cached = await cacheService.GetAsync<PagedList<DailyCapacityPagedItemDto>>(
+            cacheKey, cancellationToken);
+        if (cached is not null)
             return Result.Success(cached);
 
         var (items, totalCount) = await queryService.GetDailyPagedAsync(
@@ -34,20 +37,12 @@ public class GetDailyCapacityPagedHandler(
             request.DeviceId,
             cancellationToken);
 
-        var result = new
-        {
-            Items = items,
-            MetaData = new
-            {
-                TotalCount = totalCount,
-                PageSize = request.PaginationParams.PageSize,
-                CurrentPage = request.PaginationParams.PageNumber,
-                TotalPages = (int)Math.Ceiling(totalCount / (double)request.PaginationParams.PageSize)
-            }
-        };
+        var pagedList = new PagedList<DailyCapacityPagedItemDto>(
+            items, totalCount, request.PaginationParams);
 
-        await cacheService.SetAsync(cacheKey, result, TimeSpan.FromMinutes(5), cancellationToken);
+        await cacheService.SetAsync(
+            cacheKey, pagedList, TimeSpan.FromMinutes(5), cancellationToken);
 
-        return Result.Success<object>(result);
+        return Result.Success(pagedList);
     }
 }

@@ -42,7 +42,7 @@ public interface ICapacityQueryService
     /// <summary>
     /// 云端后台分页查询（从 hourly_capacity 聚合为日粒度）
     /// </summary>
-    Task<(List<dynamic> Items, int TotalCount)> GetDailyPagedAsync(
+    Task<(List<DailyCapacityPagedItemDto> Items, int TotalCount)> GetDailyPagedAsync(
         Pagination pagination,
         DateOnly? date = null,
         Guid? deviceId = null,
@@ -88,3 +88,17 @@ public record DailyRangeSummaryDto(
     int NightShiftOk,
     int NightShiftNg
 );
+
+/// <summary>
+/// 所有机台产能分页列表单行 DTO。
+/// 字段严格对齐 GetDailyPagedAsync 的 SELECT 列表。
+/// </summary>
+public record DailyCapacityPagedItemDto(
+    Guid DeviceId,
+    string DeviceName,
+    DateOnly Date,
+    int TotalCount,
+    int OkCount,
+    int NgCount,
+    decimal OkRate,
+    DateTime ReportedAt);
