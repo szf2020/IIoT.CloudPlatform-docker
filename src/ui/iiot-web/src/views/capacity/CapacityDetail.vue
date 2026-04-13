@@ -153,8 +153,8 @@ import { getHourlyByDeviceApi, getDailySummaryApi, getSummaryRangeApi } from '..
 const route  = useRoute();
 const router = useRouter();
 
-const deviceId   = ref(route.query.deviceId   as string ?? '');
-const deviceName = ref(route.query.deviceName as string ?? '设备详情');
+const deviceId   = ref((route.query.deviceId   as string | undefined) ?? '');
+const deviceName = ref((route.query.deviceName as string | undefined) ?? '设备详情');
 
 const plcNameFilter = ref('');
 
@@ -255,6 +255,10 @@ const switchMode = (mode: 'day' | 'month' | 'year') => {
 
 // ── 核心查询 ────────────────────────────────────────────────────────
 const fetchData = async () => {
+  if (!deviceId.value) {
+    rows.value = [];
+    return;
+  }
   loading.value = true;
   rows.value = [];
   try {

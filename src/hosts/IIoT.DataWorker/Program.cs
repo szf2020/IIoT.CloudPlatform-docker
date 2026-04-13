@@ -6,8 +6,23 @@ using IIoT.ProductionService.Commands.Capacities;
 using IIoT.Services.Common.Behaviors;
 using MassTransit;
 using MediatR;
+using Microsoft.Extensions.DependencyInjection;
 
 var builder = Host.CreateApplicationBuilder(args);
+
+// DataWorker 只消费三个 Persist Handler,但 MediatR 会扫描整个
+// ProductionService 程序集的所有 Handler。那些用不到的 Handler 依赖
+// EF / AutoMapper / ICurrentUser 等 DataWorker 不需要的服务。
+// 关闭构建期严格校验,让它们保持"已注册但永不实例化"状态 —
+// 实际运行时三个 Consumer 只会 Send 三个 PersistXxxCommand,
+// 对应的 Persist Handler 依赖(IDeviceIdentityQueryService +
+// IXxxRecordRepository)在本文件已全部注册,不会触发解析错误。
+builder.ConfigureContainer(
+    new DefaultServiceProviderFactory(new ServiceProviderOptions
+    {
+        ValidateOnBuild = false,
+        ValidateScopes = false
+    }));
 
 // 1. Serilog 日志
 builder.AddSerilog("dataworker");

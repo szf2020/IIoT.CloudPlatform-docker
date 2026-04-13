@@ -1,16 +1,22 @@
 using IIoT.Dapper.Bootstrap;
 using IIoT.Dapper.Initializers;
 using IIoT.EntityFrameworkCore;
+using IIoT.Infrastructure;
 using IIoT.MigrationWorkApp;
 
 var builder = Host.CreateApplicationBuilder(args);
 
 builder.AddServiceDefaults();
 
-// EF Core 负责聚合根 schema (由 EF Migration 执行)
+// 基础设施层(FusionCache + ICacheService + 分布式锁 + JWT)
+// PermissionProvider / DeviceIdentityQueryService 等都依赖 ICacheService,
+// 必须在 AddEfCore / AddDapper 之前注册。
+builder.AddInfrastructures();
+
+// EF Core 负责聚合根 schema(由 EF Migration 执行)
 builder.AddEfCore();
 
-// Dapper 负责记录表 schema (由 RecordSchemaInitializer 执行)
+// Dapper 负责记录表 schema(由 RecordSchemaInitializer 执行)
 builder.AddDapper();
 
 // 注册 Worker(如果有)

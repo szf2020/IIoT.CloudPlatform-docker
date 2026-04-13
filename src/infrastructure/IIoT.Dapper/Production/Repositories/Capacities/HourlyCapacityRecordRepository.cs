@@ -1,4 +1,4 @@
-﻿using Dapper;
+using Dapper;
 using IIoT.Core.Production.Contracts.RecordRepositories;
 
 namespace IIoT.Dapper.Production.Repositories.Capacities;
@@ -15,8 +15,6 @@ public sealed class HourlyCapacityRecordRepository(IDbConnectionFactory connecti
             (
                 id,
                 device_id,
-                mac_address,
-                client_code,
                 date,
                 shift_code,
                 hour,
@@ -32,8 +30,6 @@ public sealed class HourlyCapacityRecordRepository(IDbConnectionFactory connecti
             (
                 @Id,
                 @DeviceId,
-                @MacAddress,
-                @ClientCode,
                 @Date,
                 @ShiftCode,
                 @Hour,
@@ -45,9 +41,8 @@ public sealed class HourlyCapacityRecordRepository(IDbConnectionFactory connecti
                 @PlcName,
                 @ReportedAt
             )
-            on conflict (mac_address, client_code, date, shift_code, hour, minute, plc_name)
+            on conflict (device_id, date, shift_code, hour, minute, plc_name)
             do update set
-                device_id = excluded.device_id,
                 time_label = excluded.time_label,
                 total_count = excluded.total_count,
                 ok_count = excluded.ok_count,
@@ -55,13 +50,10 @@ public sealed class HourlyCapacityRecordRepository(IDbConnectionFactory connecti
                 reported_at = excluded.reported_at;
             """;
 
-        // 值对象拆列 + PlcName 空值兜底(避开 PostgreSQL 唯一索引对 NULL 的"NULL 不等于 NULL"陷阱)
         var row = new
         {
             item.Id,
             item.DeviceId,
-            MacAddress = item.Instance.MacAddress,
-            ClientCode = item.Instance.ClientCode,
             item.Date,
             item.ShiftCode,
             item.Hour,

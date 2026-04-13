@@ -1,5 +1,4 @@
 using IIoT.Core.Production.Contracts.RecordRepositories;
-using IIoT.Core.Production.ValueObjects;
 using IIoT.Services.Common.Contracts.DapperQueries;
 using IIoT.Services.Common.Events;
 using IIoT.SharedKernel.Messaging;
@@ -8,9 +7,7 @@ using IIoT.SharedKernel.Result;
 namespace IIoT.ProductionService.Commands.DeviceLogs;
 
 /// <summary>
-/// Persist 用例:批量落库设备日志。
-/// 由 DataWorker 的 DeviceLogConsumer 通过 MediatR 派发。
-/// 整批共享同一 DeviceId,一次反查 Device 身份,一次 InsertBatch。
+/// Persist command dispatched by DataWorker after message consumption.
 /// </summary>
 public record PersistDeviceLogCommand(
     DeviceLogReceivedEvent Event
@@ -30,19 +27,17 @@ public class PersistDeviceLogHandler(
         if (evt.Logs.Count == 0)
             return Result.Success(true);
 
-        var snapshot = await deviceIdentityQuery.GetByDeviceIdAsync(
+        var exists = await deviceIdentityQuery.ExistsAsync(
             evt.DeviceId, cancellationToken);
 
-        if (snapshot is null)
-            return Result.Failure($"落库失败:DeviceId {evt.DeviceId} 对应的设备不存在");
+        if (!exists)
+            return Result.Failure($"Persist failed: DeviceId {evt.DeviceId} does not exist.");
 
-        var instance = ClientInstanceId.Create(snapshot.MacAddress, snapshot.ClientCode);
         var receivedAt = DateTime.UtcNow;
 
         var writeModels = evt.Logs.Select(item => new DeviceLogWriteModel(
             Id: Guid.NewGuid(),
             DeviceId: evt.DeviceId,
-            Instance: instance,
             Level: item.Level,
             Message: item.Message,
             LogTime: DateTime.SpecifyKind(item.LogTime, DateTimeKind.Utc),

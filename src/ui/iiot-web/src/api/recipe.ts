@@ -40,16 +40,17 @@ export interface RecipeParameter {
 
 /** 创建配方指令 — 对齐 CreateRecipeCommand */
 export interface CreateRecipePayload {
-  RecipeName: string;
-  ProcessId: string;
-  DeviceId?: string | null;
-  ParametersJsonb: string;
+  recipeName: string;
+  processId: string;
+  deviceId?: string | null;
+  parametersJsonb: string;
 }
 
 /** 升级配方版本指令 — 对齐 UpgradeRecipeVersionCommand */
 export interface UpgradeRecipeVersionPayload {
-  NewVersion: string;
-  ParametersJsonb: string;
+  sourceRecipeId: string;
+  newVersion: string;
+  parametersJsonb: string;
 }
 
 /** 分页返回包装 */
@@ -67,10 +68,10 @@ export const getRecipePagedListApi = (params: {
   pagination?: Pagination;
   keyword?: string;
 }) => {
-  return http.get<PagedList<RecipeListItemDto>>('/recipe', {
+  return http.get<PagedList<RecipeListItemDto>>('/Recipe', {
     params: {
-      'pagination.PageNumber': params.pagination?.PageNumber ?? 1,
-      'pagination.PageSize': params.pagination?.PageSize ?? 10,
+      PageNumber: params.pagination?.PageNumber ?? 1,
+      PageSize: params.pagination?.PageSize ?? 10,
       keyword: params.keyword || undefined,
     },
   });
@@ -78,20 +79,20 @@ export const getRecipePagedListApi = (params: {
 
 /** 获取配方详情（含 JSONB）— GET /api/v1/recipe/{id} */
 export const getRecipeDetailApi = (id: string) => {
-  return http.get<RecipeDetailDto>(`/recipe/${id}`);
+  return http.get<RecipeDetailDto>(`/Recipe/${id}`);
 };
 
 /** 创建新配方 — POST /api/v1/recipe */
 export const createRecipeApi = (payload: CreateRecipePayload) => {
-  return http.post<string>('/recipe', payload);
+  return http.post<string>('/Recipe', payload);
 };
 
 /** 升级配方版本 — POST /api/v1/recipe/{id}/upgrade */
 export const upgradeRecipeVersionApi = (id: string, payload: UpgradeRecipeVersionPayload) => {
-  return http.post<string>(`/recipe/${id}/upgrade`, payload);
+  return http.post<string>(`/Recipe/${id}/upgrade`, payload);
 };
 
 /** 物理删除配方 — DELETE /api/v1/recipe/{id} */
 export const deleteRecipeApi = (id: string) => {
-  return http.delete<boolean>(`/recipe/${id}`);
+  return http.delete<boolean>(`/Recipe/${id}`);
 };

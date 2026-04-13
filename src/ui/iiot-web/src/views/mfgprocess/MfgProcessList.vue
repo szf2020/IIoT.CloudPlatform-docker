@@ -84,12 +84,12 @@
           <div class="modal-body">
             <div class="form-field">
               <label class="form-label">工序编码 <span class="required">*</span></label>
-              <input class="form-input mono-input" v-model="createForm.ProcessCode" placeholder="如：Stacking、Injection" />
+              <input class="form-input mono-input" v-model="createForm.processCode" placeholder="如：Stacking、Injection" />
               <p class="form-hint">编码全局唯一，建议使用英文标识符</p>
             </div>
             <div class="form-field">
               <label class="form-label">工序名称 <span class="required">*</span></label>
-              <input class="form-input" v-model="createForm.ProcessName" placeholder="如：叠片工序、注液工序" />
+              <input class="form-input" v-model="createForm.processName" placeholder="如：叠片工序、注液工序" />
             </div>
           </div>
           <div class="modal-footer">
@@ -113,11 +113,11 @@
           <div class="modal-body">
             <div class="form-field">
               <label class="form-label">工序编码 <span class="required">*</span></label>
-              <input class="form-input mono-input" v-model="editForm.ProcessCode" />
+              <input class="form-input mono-input" v-model="editForm.processCode" />
             </div>
             <div class="form-field">
               <label class="form-label">工序名称 <span class="required">*</span></label>
-              <input class="form-input" v-model="editForm.ProcessName" />
+              <input class="form-input" v-model="editForm.processName" />
             </div>
           </div>
           <div class="modal-footer">
@@ -204,15 +204,15 @@ const goPage = (page: number) => { currentPage.value = page; fetchList(); };
 
 // ── 新建弹窗 ──
 const showCreateModal = ref(false);
-const createForm = reactive({ ProcessCode: '', ProcessName: '' });
+const createForm = reactive({ processCode: '', processName: '' });
 
 const openCreateModal = () => {
-  Object.assign(createForm, { ProcessCode: '', ProcessName: '' });
+  Object.assign(createForm, { processCode: '', processName: '' });
   showCreateModal.value = true;
 };
 
 const submitCreate = async () => {
-  if (!createForm.ProcessCode.trim() || !createForm.ProcessName.trim()) {
+  if (!createForm.processCode.trim() || !createForm.processName.trim()) {
     alert('编码和名称均为必填项'); return;
   }
   submitting.value = true;
@@ -226,24 +226,25 @@ const submitCreate = async () => {
 // ── 编辑弹窗 ──
 const showEditModal = ref(false);
 const editTarget = ref<MfgProcessListItemDto | null>(null);
-const editForm = reactive({ ProcessCode: '', ProcessName: '' });
+const editForm = reactive({ processCode: '', processName: '' });
 
 const openEditModal = (p: MfgProcessListItemDto) => {
   editTarget.value = p;
-  editForm.ProcessCode = p.processCode;
-  editForm.ProcessName = p.processName;
+  editForm.processCode = p.processCode;
+  editForm.processName = p.processName;
   showEditModal.value = true;
 };
 
 const submitEdit = async () => {
-  if (!editTarget.value || !editForm.ProcessCode.trim() || !editForm.ProcessName.trim()) {
+  if (!editTarget.value || !editForm.processCode.trim() || !editForm.processName.trim()) {
     alert('编码和名称不能为空'); return;
   }
   submitting.value = true;
   try {
     await updateMfgProcessApi(editTarget.value.id, {
-      ProcessCode: editForm.ProcessCode,
-      ProcessName: editForm.ProcessName,
+      processId: editTarget.value.id,
+      processCode: editForm.processCode,
+      processName: editForm.processName,
     });
     showEditModal.value = false;
     fetchList();

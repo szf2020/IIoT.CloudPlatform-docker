@@ -460,12 +460,11 @@ const submitOnboard = async () => {
   submitting.value = true;
   try {
     await onboardEmployeeApi({
-      EmployeeNo: onboardForm.EmployeeNo,
-      RealName: onboardForm.RealName,
-      Password: onboardForm.Password,
-      RoleName: onboardForm.RoleName || undefined,
-      ProcessIds: onboardProcessIds.value.length ? onboardProcessIds.value : undefined,
-      DeviceIds: onboardDeviceIds.value.length ? onboardDeviceIds.value : undefined,
+      employeeNo: onboardForm.EmployeeNo,
+      realName: onboardForm.RealName,
+      password: onboardForm.Password,
+      roleName: onboardForm.RoleName || undefined,
+      deviceIds: onboardDeviceIds.value.length ? onboardDeviceIds.value : undefined,
     });
     showOnboardModal.value = false; fetchList();
   } catch { } finally { submitting.value = false; }
@@ -484,7 +483,11 @@ const submitEdit = async () => {
   if (!editTarget.value || !editForm.RealName.trim()) { alert('姓名不能为空'); return; }
   submitting.value = true;
   try {
-    await updateEmployeeProfileApi(editTarget.value.id, { RealName: editForm.RealName, IsActive: editForm.IsActive });
+    await updateEmployeeProfileApi(editTarget.value.id, {
+      employeeId: editTarget.value.id,
+      realName: editForm.RealName,
+      isActive: editForm.IsActive,
+    });
     showEditModal.value = false; fetchList();
   } catch { } finally { submitting.value = false; }
 };
@@ -507,7 +510,10 @@ const openAccessModal = async (id: string) => {
 const submitAccess = async () => {
   submitting.value = true;
   try {
-    await updateEmployeeAccessApi(accessTargetId.value, { ProcessIds: accessForm.ProcessIds, DeviceIds: accessForm.DeviceIds });
+    await updateEmployeeAccessApi(accessTargetId.value, {
+      employeeId: accessTargetId.value,
+      deviceIds: accessForm.DeviceIds,
+    });
     showAccessModal.value = false; fetchList();
   } catch { } finally { submitting.value = false; }
 };
@@ -541,7 +547,7 @@ const submitResetPwd = async () => {
   if (resetPwdForm.newPwd !== resetPwdForm.confirm) { alert('两次输入的密码不一致'); return; }
   submitting.value = true;
   try {
-    await resetPasswordApi({ UserId: resetPwdTarget.value.id, NewPassword: resetPwdForm.newPwd });
+    await resetPasswordApi({ userId: resetPwdTarget.value.id, newPassword: resetPwdForm.newPwd });
     showResetPwdModal.value = false;
     alert('密码重置成功');
   } catch { } finally { submitting.value = false; }
@@ -578,8 +584,8 @@ const submitPersonalPerm = async () => {
   submitting.value = true;
   try {
     await updateUserPermissionsApi(personalPermTarget.value.id, {
-      UserId: personalPermTarget.value.id,
-      Permissions: personalPermForm.value,
+      userId: personalPermTarget.value.id,
+      permissions: personalPermForm.value,
     });
     showPersonalPermModal.value = false;
     alert('特批权限保存成功，员工重新登录后生效');

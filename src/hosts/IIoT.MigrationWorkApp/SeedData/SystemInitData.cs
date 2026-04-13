@@ -13,7 +13,8 @@ public static class SystemInitData
     public static async Task SeedAsync(
         IIoTDbContext dbContext,
         UserManager<ApplicationUser> userManager,
-        RoleManager<IdentityRole<Guid>> roleManager)
+        RoleManager<IdentityRole<Guid>> roleManager,
+        CancellationToken cancellationToken = default)
     {
         // 1. 确保超级管理员角色存在
         var adminRoleName = "Admin";

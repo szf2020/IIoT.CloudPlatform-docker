@@ -123,8 +123,8 @@
             <td>
               <div class="msg-cell" :class="{ expanded: expandedId === r.id }">{{ r.message }}</div>
             </td>
-            <td class="time-cell">{{ formatTime(r.log_time) }}</td>
-            <td class="time-cell">{{ formatTime(r.received_at) }}</td>
+            <td class="time-cell">{{ formatTime(r.logTime ?? r.log_time) }}</td>
+            <td class="time-cell">{{ formatTime(r.receivedAt ?? r.received_at) }}</td>
           </tr>
         </tbody>
       </table>
@@ -220,7 +220,7 @@ const levelClass = (level: string) => {
   }
 };
 
-const formatTime = (t: string) => {
+const formatTime = (t?: string | null) => {
   if (!t) return '—';
   try {
     const d = new Date(t);

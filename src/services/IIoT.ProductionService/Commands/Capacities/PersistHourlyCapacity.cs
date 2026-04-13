@@ -1,5 +1,4 @@
 using IIoT.Core.Production.Contracts.RecordRepositories;
-using IIoT.Core.Production.ValueObjects;
 using IIoT.Services.Common.Contracts.DapperQueries;
 using IIoT.Services.Common.Events;
 using IIoT.SharedKernel.Messaging;
@@ -8,10 +7,7 @@ using IIoT.SharedKernel.Result;
 namespace IIoT.ProductionService.Commands.Capacities;
 
 /// <summary>
-/// Persist 用例:落库半小时产能记录。
-/// 由 DataWorker 的 HourlyCapacityConsumer 通过 MediatR 派发。
-/// 反查 Device 身份(走 FusionCache) → 组装 WriteModel →
-/// 调 Repository 的 UpsertAsync 幂等写入。
+/// Persist command dispatched by DataWorker after message consumption.
 /// </summary>
 public record PersistHourlyCapacityCommand(
     HourlyCapacityReceivedEvent Event
@@ -28,16 +24,15 @@ public class PersistHourlyCapacityHandler(
     {
         var evt = request.Event;
 
-        var snapshot = await deviceIdentityQuery.GetByDeviceIdAsync(
+        var exists = await deviceIdentityQuery.ExistsAsync(
             evt.DeviceId, cancellationToken);
 
-        if (snapshot is null)
-            return Result.Failure($"落库失败:DeviceId {evt.DeviceId} 对应的设备不存在");
+        if (!exists)
+            return Result.Failure($"Persist failed: DeviceId {evt.DeviceId} does not exist.");
 
         var writeModel = new HourlyCapacityWriteModel(
             Id: Guid.NewGuid(),
             DeviceId: evt.DeviceId,
-            Instance: ClientInstanceId.Create(snapshot.MacAddress, snapshot.ClientCode),
             Date: evt.Date,
             ShiftCode: evt.ShiftCode,
             Hour: evt.Hour,

@@ -7,10 +7,8 @@ export interface LoginPayload {
 }
 
 export const loginApi = (data: LoginPayload) => {
-  // 🌟 强制首字母大写，对齐 C# Record 字段名
-  const csharpPayload = {
-    EmployeeNo: data.employeeNo,
-    Password: data.password
-  };
-  return http.post<string>('/identity/login', csharpPayload);
+  return http.post<string>('/Identity/login', {
+    employeeNo: data.employeeNo,
+    password: data.password,
+  });
 };

@@ -8,8 +8,7 @@ namespace IIoT.EntityFrameworkCore.Identity;
 
 public class IdentityService(
     UserManager<ApplicationUser> userManager,
-    RoleManager<IdentityRole<Guid>> roleManager,
-    IIoTDbContext dbContext) : IAccountService, IRolePolicyService, IUserQueryService
+    RoleManager<IdentityRole<Guid>> roleManager) : IAccountService, IRolePolicyService, IUserQueryService
 {
     private const string PermissionClaimType = "Permission";
 

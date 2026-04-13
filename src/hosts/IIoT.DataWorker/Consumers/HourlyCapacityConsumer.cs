@@ -21,6 +21,6 @@ public sealed class HourlyCapacityConsumer(ISender sender)
 
         if (!result.IsSuccess)
             throw new InvalidOperationException(
-                $"半小时产能落库失败:{string.Join("; ", result.Errors)}");
+                $"半小时产能落库失败:{string.Join("; ", result.Errors ?? [])}");
     }
 }

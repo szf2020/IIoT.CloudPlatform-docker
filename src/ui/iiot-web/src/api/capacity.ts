@@ -10,14 +10,14 @@ export interface PagedList<T> {
 
 // 日汇总记录（总览表格用）
 export interface DailyCapacityItem {
-  device_id:   string;
-  device_name: string;
-  date:        string;
-  total_count: number;
-  ok_count:    number;
-  ng_count:    number;
-  ok_rate:     number;
-  reported_at: string;
+  deviceId:   string;
+  deviceName: string;
+  date:       string;
+  totalCount: number;
+  okCount:    number;
+  ngCount:    number;
+  okRate:     number;
+  reportedAt: string;
 }
 
 // 半小时明细记录（日视图用）
@@ -67,7 +67,7 @@ export const getDailyPagedApi = (params: {
   date?:       string;
   deviceId?:   string;
 }) => {
-  return http.get<PagedList<DailyCapacityItem>>('/capacity/daily', {
+  return http.get<PagedList<DailyCapacityItem>>('/Capacity/daily', {
     params: {
       PageNumber: params.PageNumber ?? 1,
       PageSize:   params.PageSize   ?? 10,
@@ -84,7 +84,7 @@ export const getHourlyByDeviceApi = (params: {
   date:     string;
   plcName?: string;
 }) => {
-  return http.get<HourlyCapacityItem[]>('/capacity/hourly', {
+  return http.get<HourlyCapacityItem[]>('/Capacity/hourly', {
     params: {
       deviceId: params.deviceId,
       date:     params.date,
@@ -100,7 +100,7 @@ export const getDailySummaryApi = (params: {
   date:     string;
   plcName?: string;
 }) => {
-  return http.get<DailySummaryItem | null>('/capacity/summary', {
+  return http.get<DailySummaryItem | null>('/Capacity/summary', {
     params: {
       deviceId: params.deviceId,
       date:     params.date,
@@ -117,7 +117,7 @@ export const getSummaryRangeApi = (params: {
   endDate:   string;
   plcName?:  string;
 }) => {
-  return http.get<DailyRangeSummaryDto[]>('/capacity/summary/range', {
+  return http.get<DailyRangeSummaryDto[]>('/Capacity/summary/range', {
     params: {
       deviceId:  params.deviceId,
       startDate: params.startDate,

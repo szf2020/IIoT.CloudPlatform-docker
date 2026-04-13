@@ -1,4 +1,4 @@
-﻿using Dapper;
+using Dapper;
 using IIoT.Services.Common.Contracts.DapperQueries;
 using IIoT.SharedKernel.Paging;
 
@@ -89,8 +89,6 @@ public class PassStationQueryService(IDbConnectionFactory connectionFactory) : I
         const string sql = @"
             SELECT id                   AS Id,
                    device_id            AS DeviceId,
-                   mac_address          AS MacAddress,
-                   client_code          AS ClientCode,
                    cell_result          AS CellResult,
                    completed_time       AS CompletedTime,
                    received_at          AS ReceivedAt,
@@ -114,7 +112,6 @@ public class PassStationQueryService(IDbConnectionFactory connectionFactory) : I
     {
         using var connection = connectionFactory.CreateConnection();
 
-        // CTE 先锁定该机台最新 200 条，外层再分页，前端最多翻到第 200 条
         var dataSql = @"
             WITH latest AS (
                 SELECT id                   AS Id,
@@ -149,10 +146,10 @@ public class PassStationQueryService(IDbConnectionFactory connectionFactory) : I
         var offset = (pagination.PageNumber - 1) * pagination.PageSize;
         var parameters = new { DeviceId = deviceId, Offset = offset, PageSize = pagination.PageSize };
 
-        var command      = new CommandDefinition(dataSql, parameters, cancellationToken: cancellationToken);
+        var command = new CommandDefinition(dataSql, parameters, cancellationToken: cancellationToken);
         var countCommand = new CommandDefinition(countSql, new { DeviceId = deviceId }, cancellationToken: cancellationToken);
 
-        var items      = (await connection.QueryAsync<InjectionPassListItemDto>(command)).ToList();
+        var items = (await connection.QueryAsync<InjectionPassListItemDto>(command)).ToList();
         var totalCount = await connection.ExecuteScalarAsync<int>(countCommand);
 
         return (items, totalCount);

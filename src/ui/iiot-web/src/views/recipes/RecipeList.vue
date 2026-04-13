@@ -102,11 +102,11 @@
             <div class="form-row">
               <div class="form-field">
                 <label class="form-label">配方名称 <span class="required">*</span></label>
-                <input class="form-input" v-model="createForm.RecipeName" placeholder="如：A型号冬季配方" />
+                <input class="form-input" v-model="createForm.recipeName" placeholder="如：A型号冬季配方" />
               </div>
               <div class="form-field">
                 <label class="form-label">归属工序 <span class="required">*</span></label>
-                <select class="form-input" v-model="createForm.ProcessId">
+                <select class="form-input" v-model="createForm.processId">
                   <option value="">请选择工序</option>
                   <option v-for="p in allProcesses" :key="p.id" :value="p.id">{{ p.processCode }} · {{ p.processName }}</option>
                 </select>
@@ -114,7 +114,7 @@
             </div>
             <div class="form-field">
               <label class="form-label">专属机台 <span class="optional">（不选 = 工序通用配方）</span></label>
-              <select class="form-input" v-model="createForm.DeviceId">
+              <select class="form-input" v-model="createForm.deviceId">
                 <option value="">通用配方（不绑定机台）</option>
                 <option v-for="d in allDevices" :key="d.id" :value="d.id">{{ d.deviceName }}</option>
               </select>
@@ -169,7 +169,7 @@
             <div class="form-row">
               <div class="form-field">
                 <label class="form-label">新版本号 <span class="required">*</span></label>
-                <input class="form-input mono-input" v-model="upgradeForm.NewVersion" placeholder="如：V2.0" />
+                <input class="form-input mono-input" v-model="upgradeForm.newVersion" placeholder="如：V2.0" />
                 <p class="form-hint">版本号不能与已有版本重复</p>
               </div>
               <div class="form-field">
@@ -389,7 +389,7 @@ const prettyJson = (str: string): string => {
 const showCreateModal = ref(false);
 const createParams = ref<RecipeParameter[]>([]);
 const createForm = reactive({
-  RecipeName: '', ProcessId: '', DeviceId: '',
+  recipeName: '', processId: '', deviceId: '',
 });
 
 const addCreateParam = () => {
@@ -397,24 +397,24 @@ const addCreateParam = () => {
 };
 
 const openCreateModal = async () => {
-  Object.assign(createForm, { RecipeName: '', ProcessId: '', DeviceId: '' });
+  Object.assign(createForm, { recipeName: '', processId: '', deviceId: '' });
   createParams.value = [];
   showCreateModal.value = true;
   await fetchSelectData();
 };
 
 const submitCreate = async () => {
-  if (!createForm.RecipeName.trim() || !createForm.ProcessId) { alert('配方名称和归属工序为必填项'); return; }
+  if (!createForm.recipeName.trim() || !createForm.processId) { alert('配方名称和归属工序为必填项'); return; }
   if (createParams.value.length === 0) { alert('至少添加一个工艺参数'); return; }
   const emptyName = createParams.value.some(p => !p.name.trim());
   if (emptyName) { alert('参数名称不能为空'); return; }
   submitting.value = true;
   try {
     await createRecipeApi({
-      RecipeName: createForm.RecipeName,
-      ProcessId: createForm.ProcessId,
-      DeviceId: createForm.DeviceId.trim() || null,
-      ParametersJsonb: paramsToJsonb(createParams.value),
+      recipeName: createForm.recipeName,
+      processId: createForm.processId,
+      deviceId: createForm.deviceId.trim() || null,
+      parametersJsonb: paramsToJsonb(createParams.value),
     });
     showCreateModal.value = false;
     fetchList();
@@ -425,7 +425,7 @@ const submitCreate = async () => {
 const showUpgradeModal = ref(false);
 const upgradeTarget = ref<RecipeListItemDto | null>(null);
 const upgradeParams = ref<RecipeParameter[]>([]);
-const upgradeForm = reactive({ NewVersion: '' });
+const upgradeForm = reactive({ newVersion: '' });
 
 const addUpgradeParam = () => {
   upgradeParams.value.push({ id: generateParamId(), name: '', unit: '', min: 0, max: 0 });
@@ -433,7 +433,7 @@ const addUpgradeParam = () => {
 
 const openUpgradeModal = async (recipe: RecipeListItemDto) => {
   upgradeTarget.value = recipe;
-  upgradeForm.NewVersion = '';
+  upgradeForm.newVersion = '';
   upgradeParams.value = [];
   showUpgradeModal.value = true;
   try {
@@ -450,15 +450,16 @@ const openUpgradeModal = async (recipe: RecipeListItemDto) => {
 };
 
 const submitUpgrade = async () => {
-  if (!upgradeTarget.value || !upgradeForm.NewVersion.trim()) { alert('版本号不能为空'); return; }
+  if (!upgradeTarget.value || !upgradeForm.newVersion.trim()) { alert('版本号不能为空'); return; }
   if (upgradeParams.value.length === 0) { alert('至少保留一个工艺参数'); return; }
   const emptyName = upgradeParams.value.some(p => !p.name.trim());
   if (emptyName) { alert('参数名称不能为空'); return; }
   submitting.value = true;
   try {
     await upgradeRecipeVersionApi(upgradeTarget.value.id, {
-      NewVersion: upgradeForm.NewVersion,
-      ParametersJsonb: paramsToJsonb(upgradeParams.value),
+      sourceRecipeId: upgradeTarget.value.id,
+      newVersion: upgradeForm.newVersion,
+      parametersJsonb: paramsToJsonb(upgradeParams.value),
     });
     showUpgradeModal.value = false;
     fetchList();

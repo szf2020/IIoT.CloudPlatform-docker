@@ -22,6 +22,6 @@ public sealed class PassDataInjectionConsumer(ISender sender)
 
         if (!result.IsSuccess)
             throw new InvalidOperationException(
-                $"注液过站数据批量落库失败:{string.Join("; ", result.Errors)}");
+                $"注液过站数据批量落库失败:{string.Join("; ", result.Errors ?? [])}");
     }
 }

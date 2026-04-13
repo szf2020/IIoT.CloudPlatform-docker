@@ -24,14 +24,15 @@ export interface MfgProcessSelectDto {
 
 /** 创建工序指令 — 对齐 CreateMfgProcessCommand */
 export interface CreateMfgProcessPayload {
-  ProcessCode: string;
-  ProcessName: string;
+  processCode: string;
+  processName: string;
 }
 
 /** 更新工序指令 — 对齐 UpdateMfgProcessCommand */
 export interface UpdateMfgProcessPayload {
-  ProcessCode: string;
-  ProcessName: string;
+  processId: string;
+  processCode: string;
+  processName: string;
 }
 
 /** 分页返回包装 */
@@ -49,10 +50,10 @@ export const getMfgProcessPagedListApi = (params: {
   pagination?: Pagination;
   keyword?: string;
 }) => {
-  return http.get<PagedList<MfgProcessListItemDto>>('/mfgprocess', {
+  return http.get<PagedList<MfgProcessListItemDto>>('/MfgProcess', {
     params: {
-      'pagination.PageNumber': params.pagination?.PageNumber ?? 1,
-      'pagination.PageSize': params.pagination?.PageSize ?? 10,
+      PageNumber: params.pagination?.PageNumber ?? 1,
+      PageSize: params.pagination?.PageSize ?? 10,
       keyword: params.keyword || undefined,
     },
   });
@@ -60,20 +61,20 @@ export const getMfgProcessPagedListApi = (params: {
 
 /** 获取全量工序列表 (下拉选择器用) — GET /api/v1/mfgprocess/all */
 export const getAllMfgProcessesApi = () => {
-  return http.get<MfgProcessSelectDto[]>('/mfgprocess/all');
+  return http.get<MfgProcessSelectDto[]>('/MfgProcess/all');
 };
 
 /** 创建新工序 — POST /api/v1/mfgprocess */
 export const createMfgProcessApi = (payload: CreateMfgProcessPayload) => {
-  return http.post<string>('/mfgprocess', payload);
+  return http.post<string>('/MfgProcess', payload);
 };
 
 /** 更新工序档案 — PUT /api/v1/mfgprocess/{id} */
 export const updateMfgProcessApi = (id: string, payload: UpdateMfgProcessPayload) => {
-  return http.put<boolean>(`/mfgprocess/${id}`, payload);
+  return http.put<boolean>(`/MfgProcess/${id}`, payload);
 };
 
 /** 删除工序 — DELETE /api/v1/mfgprocess/{id} */
 export const deleteMfgProcessApi = (id: string) => {
-  return http.delete<boolean>(`/mfgprocess/${id}`);
+  return http.delete<boolean>(`/MfgProcess/${id}`);
 };

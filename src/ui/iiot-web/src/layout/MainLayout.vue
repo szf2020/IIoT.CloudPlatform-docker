@@ -222,9 +222,9 @@ const submitPassword = async () => {
   pwdSubmitting.value = true;
   try {
     await changePasswordApi({
-      UserId: authStore.userId,
-      CurrentPassword: passwordForm.current,
-      NewPassword: passwordForm.newPwd,
+      userId: authStore.userId,
+      currentPassword: passwordForm.current,
+      newPassword: passwordForm.newPwd,
     });
     showPasswordModal.value = false;
     passwordForm.current = '';

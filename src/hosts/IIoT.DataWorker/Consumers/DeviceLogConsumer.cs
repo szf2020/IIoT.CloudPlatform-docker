@@ -21,6 +21,6 @@ public sealed class DeviceLogConsumer(ISender sender)
 
         if (!result.IsSuccess)
             throw new InvalidOperationException(
-                $"设备日志批量落库失败:{string.Join("; ", result.Errors)}");
+                $"设备日志批量落库失败:{string.Join("; ", result.Errors ?? [])}");
     }
 }

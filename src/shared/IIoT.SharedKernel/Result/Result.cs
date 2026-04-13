@@ -31,7 +31,7 @@ public class Result<T> : IResult
 
     public static implicit operator Result<T>(Result result)
     {
-        return new Result<T>(default(T))
+        return new Result<T>((T)default!)
         {
             Status = result.Status,
             Errors = result.Errors

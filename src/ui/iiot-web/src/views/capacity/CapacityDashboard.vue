@@ -65,21 +65,22 @@
           </tr>
         </thead>
         <tbody>
-          <tr v-for="r in records" :key="r.device_id + r.date" class="table-row">
-            <td><span class="device-name">{{ r.device_name }}</span></td>
+          <tr v-for="r in records" :key="r.deviceId + r.date" class="table-row">
+            <td><span class="device-name">{{ r.deviceName }}</span></td>
             <td>{{ r.date }}</td>
-            <td class="mono">{{ r.total_count }}</td>
-            <td class="mono ok-num">{{ r.ok_count }}</td>
-            <td class="mono ng-num">{{ r.ng_count }}</td>
+            <td class="mono">{{ r.totalCount }}</td>
+            <td class="mono ok-num">{{ r.okCount }}</td>
+            <td class="mono ng-num">{{ r.ngCount }}</td>
             <td>
               <div class="rate-bar-wrap">
-                <div class="rate-bar" :style="{ width: r.ok_rate + '%' }" :class="rateClass(r.ok_rate)"></div>
-                <span class="rate-text" :class="rateClass(r.ok_rate)">{{ r.ok_rate }}%</span>
+                <div class="rate-bar" :style="{ width: r.okRate + '%' }" :class="rateClass(r.okRate)"></div>
+                <span class="rate-text" :class="rateClass(r.okRate)">{{ r.okRate }}%</span>
               </div>
             </td>
             <td>
               <button class="icon-btn detail" title="查看详细报表"
-                @click="goDetail(r.device_id, r.device_name)">
+                :disabled="!r.deviceId"
+                @click="goDetail(r.deviceId, r.deviceName)">
                 <svg viewBox="0 0 16 16" fill="none">
                   <path d="M2 12l4-4 3 2 5-6" stroke="currentColor" stroke-width="1.3"
                     stroke-linecap="round" stroke-linejoin="round"/>
@@ -146,9 +147,9 @@ const pageNumbers = computed(() => {
 });
 
 const totalStats = computed(() => {
-  const total = records.value.reduce((s, r) => s + r.total_count, 0);
-  const ok    = records.value.reduce((s, r) => s + r.ok_count,    0);
-  const ng    = records.value.reduce((s, r) => s + r.ng_count,    0);
+  const total = records.value.reduce((s, r) => s + r.totalCount, 0);
+  const ok    = records.value.reduce((s, r) => s + r.okCount,    0);
+  const ng    = records.value.reduce((s, r) => s + r.ngCount,    0);
   const rate  = total > 0 ? (ok * 100 / total).toFixed(1) + '%' : '0%';
   return { total, ok, ng, rate };
 });
@@ -191,6 +192,7 @@ const fetchData = async () => {
 
 const goPage   = (page: number) => { currentPage.value = page; fetchData(); };
 const goDetail = (deviceId: string, deviceName: string) => {
+  if (!deviceId) return;
   router.push({ name: 'CapacityDetail', query: { deviceId, deviceName } });
 };
 

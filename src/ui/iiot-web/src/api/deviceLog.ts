@@ -20,10 +20,10 @@ export const getLogsByDeviceAndLevelApi = (params: {
   deviceId: string;
   level?: string;
 }) => {
-  return http.get<PagedList<any>>('/devicelog/by-level', {
+  return http.get<PagedList<any>>('/DeviceLog/by-level', {
     params: {
-      'pagination.PageNumber': params.pagination?.PageNumber ?? 1,
-      'pagination.PageSize': params.pagination?.PageSize ?? 10,
+      PageNumber: params.pagination?.PageNumber ?? 1,
+      PageSize: params.pagination?.PageSize ?? 10,
       deviceId: params.deviceId,
       level: params.level || undefined,
     },
@@ -36,10 +36,10 @@ export const getLogsByDeviceAndKeywordApi = (params: {
   deviceId: string;
   keyword: string;
 }) => {
-  return http.get<PagedList<any>>('/devicelog/by-keyword', {
+  return http.get<PagedList<any>>('/DeviceLog/by-keyword', {
     params: {
-      'pagination.PageNumber': params.pagination?.PageNumber ?? 1,
-      'pagination.PageSize': params.pagination?.PageSize ?? 10,
+      PageNumber: params.pagination?.PageNumber ?? 1,
+      PageSize: params.pagination?.PageSize ?? 10,
       deviceId: params.deviceId,
       keyword: params.keyword,
     },
@@ -52,10 +52,10 @@ export const getLogsByDeviceAndDateApi = (params: {
   deviceId: string;
   date: string;
 }) => {
-  return http.get<PagedList<any>>('/devicelog/by-date', {
+  return http.get<PagedList<any>>('/DeviceLog/by-date', {
     params: {
-      'pagination.PageNumber': params.pagination?.PageNumber ?? 1,
-      'pagination.PageSize': params.pagination?.PageSize ?? 10,
+      PageNumber: params.pagination?.PageNumber ?? 1,
+      PageSize: params.pagination?.PageSize ?? 10,
       deviceId: params.deviceId,
       date: params.date,
     },
@@ -69,10 +69,10 @@ export const getLogsByDeviceAndTimeRangeApi = (params: {
   startTime: string;
   endTime: string;
 }) => {
-  return http.get<PagedList<any>>('/devicelog/by-time-range', {
+  return http.get<PagedList<any>>('/DeviceLog/by-time-range', {
     params: {
-      'pagination.PageNumber': params.pagination?.PageNumber ?? 1,
-      'pagination.PageSize': params.pagination?.PageSize ?? 10,
+      PageNumber: params.pagination?.PageNumber ?? 1,
+      PageSize: params.pagination?.PageSize ?? 10,
       deviceId: params.deviceId,
       startTime: params.startTime,
       endTime: params.endTime,
@@ -87,10 +87,10 @@ export const getLogsByDeviceDateAndKeywordApi = (params: {
   date: string;
   keyword: string;
 }) => {
-  return http.get<PagedList<any>>('/devicelog/by-date-keyword', {
+  return http.get<PagedList<any>>('/DeviceLog/by-date-keyword', {
     params: {
-      'pagination.PageNumber': params.pagination?.PageNumber ?? 1,
-      'pagination.PageSize': params.pagination?.PageSize ?? 10,
+      PageNumber: params.pagination?.PageNumber ?? 1,
+      PageSize: params.pagination?.PageSize ?? 10,
       deviceId: params.deviceId,
       date: params.date,
       keyword: params.keyword,

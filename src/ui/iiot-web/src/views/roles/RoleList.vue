@@ -50,7 +50,7 @@
           <div class="modal-body">
             <div class="form-field">
               <label class="form-label">角色名称 <span class="required">*</span></label>
-              <input class="form-input" v-model="createForm.RoleName" placeholder="如：Operator、Supervisor" />
+              <input class="form-input" v-model="createForm.roleName" placeholder="如：Operator、Supervisor" />
               <p class="form-hint">角色名建议使用英文，创建后不可修改</p>
             </div>
             <div class="form-field">
@@ -61,7 +61,7 @@
                   <div class="perm-group-title">{{ group.groupName }}</div>
                   <div class="perm-group-items">
                     <label v-for="perm in group.permissions" :key="perm" class="perm-checkbox">
-                      <input type="checkbox" :value="perm" v-model="createForm.Permissions" />
+                      <input type="checkbox" :value="perm" v-model="createForm.permissions" />
                       <span class="checkbox-box"></span>
                       <span class="checkbox-label">{{ perm }}</span>
                     </label>
@@ -151,16 +151,16 @@ const fetchRoles = async () => {
 
 // ── 创建角色 ──
 const showCreateModal = ref(false);
-const createForm = reactive({ RoleName: '', Permissions: [] as string[] });
+const createForm = reactive({ roleName: '', permissions: [] as string[] });
 const openCreateModal = async () => {
-  createForm.RoleName = ''; createForm.Permissions = [];
+  createForm.roleName = ''; createForm.permissions = [];
   showCreateModal.value = true;
   await fetchPermGroups();
 };
 const submitCreate = async () => {
-  if (!createForm.RoleName.trim()) { alert('角色名称不能为空'); return; }
+  if (!createForm.roleName.trim()) { alert('角色名称不能为空'); return; }
   submitting.value = true;
-  try { await defineRolePolicyApi({ RoleName: createForm.RoleName, Permissions: createForm.Permissions }); showCreateModal.value = false; fetchRoles(); }
+  try { await defineRolePolicyApi({ roleName: createForm.roleName, permissions: createForm.permissions }); showCreateModal.value = false; fetchRoles(); }
   catch { } finally { submitting.value = false; }
 };
 

@@ -97,8 +97,8 @@ public record DailyCapacityPagedItemDto(
     Guid DeviceId,
     string DeviceName,
     DateOnly Date,
-    int TotalCount,
-    int OkCount,
-    int NgCount,
+    long TotalCount,
+    long OkCount,
+    long NgCount,
     decimal OkRate,
     DateTime ReportedAt);

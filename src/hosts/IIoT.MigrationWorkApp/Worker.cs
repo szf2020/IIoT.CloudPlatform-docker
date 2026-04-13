@@ -59,6 +59,13 @@ public class Worker(
         await strategy.ExecuteAsync(async () =>
         {
             await dbContext.Database.MigrateAsync(cancellationToken);
+            // 为 devices 表建立 (mac_address, client_code) 联合唯一索引。
+            // 启动期幂等 SQL(IF NOT EXISTS 保证多次启动安全),绕开
+            // EF Core ComplexProperty 对 HasIndex 表达式的限制。
+            // 后续新增 Migration 不会影响这段逻辑。
+            await dbContext.Database.ExecuteSqlRawAsync(
+                "CREATE UNIQUE INDEX IF NOT EXISTS ix_devices_mac_address_client_code ON devices (mac_address, client_code);",
+                cancellationToken);
         });
 
         logger.LogInformation("数据库迁移应用完成！");
@@ -117,7 +124,7 @@ public class Worker(
     {
         logger.LogInformation("开始播种初始数据...");
 
-        await SystemInitData.SeedAsync(dbContext, userManager, roleManager);
+        await SystemInitData.SeedAsync(dbContext, userManager, roleManager, cancellationToken);
 
         logger.LogInformation("所有初始数据播种完成！");
     }

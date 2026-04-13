@@ -53,24 +53,24 @@ export interface EmployeeAccessDto {
 
 /** 入职指令（对齐 OnboardEmployeeCommand） */
 export interface OnboardEmployeePayload {
-  EmployeeNo: string;
-  RealName: string;
-  Password: string;
-  RoleName?: string;
-  ProcessIds?: string[];
-  DeviceIds?: string[];
+  employeeNo: string;
+  realName: string;
+  password: string;
+  roleName?: string;
+  deviceIds?: string[];
 }
 
 /** 更新档案指令（对齐 UpdateEmployeeProfileCommand） */
 export interface UpdateProfilePayload {
-  RealName: string;
-  IsActive: boolean;
+  employeeId: string;
+  realName: string;
+  isActive: boolean;
 }
 
 /** 更新管辖权指令（对齐 UpdateEmployeeAccessCommand） */
 export interface UpdateAccessPayload {
-  ProcessIds: string[];
-  DeviceIds: string[];
+  employeeId: string;
+  deviceIds: string[];
 }
 
 // ==========================================
@@ -82,7 +82,7 @@ export const getEmployeePagedListApi = (params: {
   PaginationParams?: Pagination;
   Keyword?: string;
 }) => {
-  return http.get<PagedList<EmployeeListItemDto>>('/employee', {
+  return http.get<PagedList<EmployeeListItemDto>>('/Employee', {
     params: {
       'PaginationParams.PageNumber': params.PaginationParams?.PageNumber ?? 1,
       'PaginationParams.PageSize': params.PaginationParams?.PageSize ?? 10,
@@ -93,42 +93,42 @@ export const getEmployeePagedListApi = (params: {
 
 /** 获取员工详情 */
 export const getEmployeeDetailApi = (id: string) => {
-  return http.get<EmployeeDetailDto>(`/employee/${id}`);
+  return http.get<EmployeeDetailDto>(`/Employee/${id}`);
 };
 
 /** 获取员工双维管辖权 */
 export const getEmployeeAccessApi = (id: string) => {
-  return http.get<EmployeeAccessDto>(`/employee/${id}/access`);
+  return http.get<EmployeeAccessDto>(`/Employee/${id}/access`);
 };
 
 /** 员工入职建档 */
 export const onboardEmployeeApi = (payload: OnboardEmployeePayload) => {
-  return http.post<string>('/employee', payload);
+  return http.post<string>('/Employee', payload);
 };
 
 /** 更新员工基础档案 */
 export const updateEmployeeProfileApi = (id: string, payload: UpdateProfilePayload) => {
-  return http.put<boolean>(`/employee/${id}/profile`, payload);
+  return http.put<boolean>(`/Employee/${id}/profile`, payload);
 };
 
 /** 更新员工双维管辖权 */
 export const updateEmployeeAccessApi = (id: string, payload: UpdateAccessPayload) => {
-  return http.put<boolean>(`/employee/${id}/access`, payload);
+  return http.put<boolean>(`/Employee/${id}/access`, payload);
 };
 
 /** 停用员工（软删除） */
 export const deactivateEmployeeApi = (id: string) => {
-  return http.put<boolean>(`/employee/${id}/deactivate`);
+  return http.put<boolean>(`/Employee/${id}/deactivate`);
 };
 
 /** 离职员工（硬删除） */
 export const terminateEmployeeApi = (id: string) => {
-  return http.delete<boolean>(`/employee/${id}`);
+  return http.delete<boolean>(`/Employee/${id}`);
 };
 
 // ==========================================
 // Identity 相关（获取角色列表，入职时用）
 // ==========================================
 export const getAllRolesApi = () => {
-  return http.get<string[]>('/identity/roles');
+  return http.get<string[]>('/Identity/roles');
 };
