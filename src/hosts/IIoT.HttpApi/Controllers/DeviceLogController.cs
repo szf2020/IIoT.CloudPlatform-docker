@@ -7,19 +7,15 @@ using Microsoft.AspNetCore.Mvc;
 namespace IIoT.HttpApi.Controllers;
 
 /// <summary>
-/// 日志科：接收边缘端设备日志 + 云端后台日志查询
+/// 设备日志接口。
 /// </summary>
 [Route("api/v1/[controller]")]
 [ApiController]
 [Tags("日志科 - 设备日志接收与查询")]
 public class DeviceLogController : ApiControllerBase
 {
-    // ==========================================
-    // 写入接口（边缘端推送）
-    // ==========================================
-
     /// <summary>
-    /// 接收设备日志（支持批量）
+    /// 接收设备日志。
     /// </summary>
     [HttpPost]
     public async Task<IActionResult> Receive([FromBody] ReceiveDeviceLogCommand command)
@@ -28,12 +24,8 @@ public class DeviceLogController : ApiControllerBase
         return result.IsSuccess ? Ok(result.Value) : BadRequest(result.Errors);
     }
 
-    // ==========================================
-    // 查询接口（云端后台）
-    // ==========================================
-
     /// <summary>
-    /// 日志查询一：设备号 + 日志级别筛选
+    /// 按级别查询日志。
     /// </summary>
     [HttpGet("by-level")]
     public async Task<IActionResult> GetByDeviceAndLevel(
@@ -47,7 +39,7 @@ public class DeviceLogController : ApiControllerBase
     }
 
     /// <summary>
-    /// 日志查询二：设备号 + 模糊搜索
+    /// 按关键字查询日志。
     /// </summary>
     [HttpGet("by-keyword")]
     public async Task<IActionResult> GetByDeviceAndKeyword(
@@ -61,7 +53,7 @@ public class DeviceLogController : ApiControllerBase
     }
 
     /// <summary>
-    /// 日志查询三：设备号 + 指定日期
+    /// 按日期查询日志。
     /// </summary>
     [HttpGet("by-date")]
     public async Task<IActionResult> GetByDeviceAndDate(
@@ -78,7 +70,7 @@ public class DeviceLogController : ApiControllerBase
     }
 
     /// <summary>
-    /// 日志查询四：设备号 + 时间范围
+    /// 按时间范围查询日志。
     /// </summary>
     [HttpGet("by-time-range")]
     public async Task<IActionResult> GetByDeviceAndTimeRange(
@@ -94,7 +86,7 @@ public class DeviceLogController : ApiControllerBase
     }
 
     /// <summary>
-    /// 日志查询五：设备号 + 日期 + 模糊搜索（最精确定位）
+    /// 按日期和关键字查询日志。
     /// </summary>
     [HttpGet("by-date-keyword")]
     public async Task<IActionResult> GetByDeviceDateAndKeyword(

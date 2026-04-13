@@ -14,7 +14,7 @@ export interface RecipeListItemDto {
   recipeName: string;
   version: string;
   processId: string;
-  deviceId: string | null;
+  deviceId: string;
   status: string;  // "Active" | "Archived"
 }
 
@@ -24,7 +24,7 @@ export interface RecipeDetailDto {
   recipeName: string;
   version: string;
   processId: string;
-  deviceId: string | null;
+  deviceId: string;
   parametersJsonb: string;
   status: string;
 }
@@ -42,7 +42,7 @@ export interface RecipeParameter {
 export interface CreateRecipePayload {
   recipeName: string;
   processId: string;
-  deviceId?: string | null;
+  deviceId: string;
   parametersJsonb: string;
 }
 

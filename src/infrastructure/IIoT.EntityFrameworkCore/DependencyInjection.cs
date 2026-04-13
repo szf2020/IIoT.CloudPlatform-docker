@@ -24,11 +24,9 @@ public static class DependencyInjection
         // 跨聚合的轻量只读查询入口
         builder.Services.AddScoped<IDataQueryService, DataQueryService>();
 
-        // 一个实现类注册三个接口,共享同一个 Scoped 实例
-        builder.Services.AddScoped<IdentityService>();
-        builder.Services.AddScoped<IAccountService>(sp => sp.GetRequiredService<IdentityService>());
-        builder.Services.AddScoped<IRolePolicyService>(sp => sp.GetRequiredService<IdentityService>());
-        builder.Services.AddScoped<IUserQueryService>(sp => sp.GetRequiredService<IdentityService>());
+        builder.Services.AddScoped<IAccountService, AccountService>();
+        builder.Services.AddScoped<IRolePolicyService, RolePolicyService>();
+        builder.Services.AddScoped<IUserQueryService, UserQueryService>();
 
         builder.Services.AddIdentityCore<ApplicationUser>(options =>
         {

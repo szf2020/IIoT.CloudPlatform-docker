@@ -31,7 +31,7 @@
       </div>
     </div>
     <div class="admin-badge" v-else>
-      <svg viewBox="0 0 20 20" fill="none"><path d="M10 2l2.4 5h5.3l-4.3 3.1 1.7 5.2L10 12.2l-5.1 3.1 1.7-5.2L2.3 7h5.3L10 2z" fill="#00e5ff" opacity="0.8"/></svg>
+      <svg viewBox="0 0 20 20" fill="none"><path d="M10 2l2.4 5h5.3l-4.3 3.1 1.7 5.2L10 12.2l-5.1 3.1 1.7-5.2L2.3 7h5.3L10 2z" fill="#d9b66d" opacity="0.88"/></svg>
       超级管理员 · 拥有系统全部权限
     </div>
 
@@ -91,170 +91,64 @@ const visibleQuickLinks = computed(() =>
 </script>
 
 <style scoped>
-@import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;700&family=Noto+Sans+SC:wght@300;400;500&display=swap');
-
-.dashboard { font-family: 'Noto Sans SC', sans-serif; }
-
-.page-header {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  margin-bottom: 24px;
+.dashboard {
+  --accent: #5ab69f;
+  --accent-soft: rgba(90, 182, 159, 0.16);
+  --warm-soft: rgba(217, 182, 109, 0.16);
+  --surface: rgba(255,255,255,0.04);
+  --surface-hover: rgba(255,255,255,0.07);
+  --border: rgba(255,255,255,0.08);
+  --text-main: #edf1ee;
+  --text-muted: rgba(237,241,238,0.72);
+  --text-subtle: rgba(237,241,238,0.44);
 }
-.page-title {
-  font-size: 22px;
-  font-weight: 500;
-  color: #e8eaf0;
-  margin: 0;
-}
-.page-date { font-size: 12px; color: rgba(255,255,255,0.25); }
 
-/* 欢迎横幅 */
+.page-header { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 24px; }
+.page-title { margin: 0; color: var(--text-main); font-size: 22px; font-weight: 600; }
+.page-date { color: var(--text-subtle); font-size: 12px; }
+
 .welcome-banner {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  background: linear-gradient(135deg, rgba(0,119,255,0.12), rgba(0,229,255,0.06));
-  border: 1px solid rgba(0,229,255,0.15);
-  border-radius: 6px;
-  padding: 24px 28px;
-  margin-bottom: 32px;
+  display: flex; align-items: center; justify-content: space-between; margin-bottom: 32px; padding: 24px 28px;
+  border: 1px solid var(--border); border-radius: 6px; background: linear-gradient(135deg, rgba(90,182,159,0.14), rgba(217,182,109,0.08));
 }
-.banner-greeting {
-  font-size: 18px;
-  font-weight: 500;
-  color: rgba(255,255,255,0.8);
-  margin-bottom: 8px;
-}
-.banner-greeting .highlight {
-  color: #00e5ff;
-  font-family: 'Rajdhani', sans-serif;
-  font-size: 20px;
-  font-weight: 700;
-}
-.banner-role { font-size: 13px; color: rgba(255,255,255,0.4); }
-.role-tag {
-  background: rgba(0,229,255,0.12);
-  color: #00e5ff;
-  padding: 2px 8px;
-  border-radius: 10px;
-  font-size: 12px;
-}
+.banner-greeting { margin-bottom: 8px; color: var(--text-main); font-size: 18px; font-weight: 500; }
+.banner-greeting .highlight { color: #d8f1ea; font-size: 20px; font-weight: 700; }
+.banner-role { color: var(--text-muted); font-size: 13px; }
+.role-tag { padding: 2px 8px; border-radius: 999px; background: var(--accent-soft); color: #d8f1ea; font-size: 12px; }
 .banner-right { text-align: right; }
-.banner-perm-label { font-size: 11px; color: rgba(255,255,255,0.3); margin-bottom: 6px; }
-.banner-perm-count {
-  font-family: 'Rajdhani', sans-serif;
-  font-size: 28px;
-  font-weight: 700;
-  color: #00e5ff;
-}
+.banner-perm-label { margin-bottom: 6px; color: var(--text-subtle); font-size: 11px; }
+.banner-perm-count { color: #f1d8a6; font-size: 28px; font-weight: 700; }
 
-.section-title {
-  font-size: 11px;
-  font-weight: 500;
-  color: rgba(255,255,255,0.25);
-  letter-spacing: 2px;
-  text-transform: uppercase;
-  margin-bottom: 16px;
-}
+.section-title { margin-bottom: 16px; color: var(--text-subtle); font-size: 11px; font-weight: 600; }
 
-/* 权限点网格 */
-.perm-grid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 32px;
-}
+.perm-grid { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 32px; }
 .perm-chip {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 5px 12px;
-  border-radius: 20px;
-  font-size: 12px;
-  background: rgba(255,255,255,0.04);
-  border: 1px solid rgba(255,255,255,0.07);
-  color: rgba(255,255,255,0.25);
-  transition: all 0.2s;
+  display: flex; align-items: center; gap: 6px; padding: 6px 12px; border: 1px solid var(--border); border-radius: 999px;
+  background: var(--surface); color: var(--text-subtle); font-size: 12px; transition: all 0.18s ease;
 }
-.perm-chip.owned {
-  background: rgba(0,229,255,0.08);
-  border-color: rgba(0,229,255,0.25);
-  color: rgba(0,229,255,0.8);
-}
-.perm-dot {
-  width: 6px; height: 6px;
-  border-radius: 50%;
-  background: rgba(255,255,255,0.2);
-  flex-shrink: 0;
-}
-.perm-chip.owned .perm-dot { background: #00e5ff; box-shadow: 0 0 4px #00e5ff; }
+.perm-chip.owned { border-color: rgba(90,182,159,0.22); background: var(--accent-soft); color: #d8f1ea; }
+.perm-dot { width: 6px; height: 6px; flex-shrink: 0; border-radius: 50%; background: rgba(255,255,255,0.22); }
+.perm-chip.owned .perm-dot { background: #5ab69f; }
 
 .admin-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 20px;
-  background: rgba(0,229,255,0.06);
-  border: 1px solid rgba(0,229,255,0.2);
-  border-radius: 4px;
-  color: rgba(0,229,255,0.8);
-  font-size: 14px;
-  margin-bottom: 32px;
+  display: inline-flex; align-items: center; gap: 10px; margin-bottom: 32px; padding: 10px 18px;
+  border: 1px solid rgba(217,182,109,0.24); border-radius: 6px; background: var(--warm-soft); color: #f1d8a6; font-size: 14px;
 }
 .admin-badge svg { width: 18px; height: 18px; }
 
-/* 快捷入口卡片 */
-.quick-links {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 16px;
-}
+.quick-links { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px; }
 .quick-card {
-  display: block;
-  position: relative;
-  padding: 22px;
-  background: rgba(255,255,255,0.03);
-  border: 1px solid rgba(255,255,255,0.07);
-  border-radius: 6px;
-  text-decoration: none;
-  color: inherit;
-  transition: all 0.2s;
-  overflow: hidden;
+  position: relative; display: block; overflow: hidden; padding: 22px; border: 1px solid var(--border); border-radius: 6px;
+  background: var(--surface); color: inherit; text-decoration: none; transition: transform 0.18s ease, border-color 0.18s ease, background-color 0.18s ease;
 }
-.quick-card:hover {
-  background: rgba(0,229,255,0.05);
-  border-color: rgba(0,229,255,0.2);
-  transform: translateY(-2px);
-}
-.quick-icon {
-  width: 36px; height: 36px;
-  color: #00e5ff;
-  margin-bottom: 14px;
-  opacity: 0.8;
-}
+.quick-card:hover { transform: translateY(-2px); border-color: rgba(90,182,159,0.22); background: var(--surface-hover); }
+.quick-icon { width: 36px; height: 36px; margin-bottom: 14px; color: #d8f1ea; opacity: 0.9; }
 .quick-icon :deep(svg) { width: 100%; height: 100%; }
-.quick-label {
-  font-size: 15px;
-  font-weight: 500;
-  color: rgba(255,255,255,0.8);
-  margin-bottom: 6px;
-}
-.quick-desc {
-  font-size: 12px;
-  color: rgba(255,255,255,0.3);
-  line-height: 1.5;
-}
+.quick-label { margin-bottom: 6px; color: var(--text-main); font-size: 15px; font-weight: 600; }
+.quick-desc { color: var(--text-muted); font-size: 12px; line-height: 1.5; }
 .quick-arrow {
-  position: absolute;
-  right: 18px; top: 50%;
-  transform: translateY(-50%);
-  width: 16px; height: 16px;
-  color: rgba(255,255,255,0.15);
-  transition: all 0.2s;
+  position: absolute; top: 50%; right: 18px; width: 16px; height: 16px; color: rgba(237,241,238,0.2);
+  transform: translateY(-50%); transition: all 0.18s ease;
 }
-.quick-card:hover .quick-arrow {
-  color: rgba(0,229,255,0.6);
-  transform: translateY(-50%) translateX(3px);
-}
+.quick-card:hover .quick-arrow { color: #d8f1ea; transform: translateY(-50%) translateX(3px); }
 </style>

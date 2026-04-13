@@ -1,6 +1,6 @@
 using Dapper;
 using IIoT.Services.Common.Contracts;
-using IIoT.Services.Common.Contracts.DapperQueries;
+using IIoT.Services.Common.Contracts.RecordQueries;
 
 namespace IIoT.Dapper.Production.QueryServices.Device;
 

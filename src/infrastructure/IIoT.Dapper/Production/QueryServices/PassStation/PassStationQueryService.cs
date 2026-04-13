@@ -1,12 +1,15 @@
 using Dapper;
-using IIoT.Services.Common.Contracts.DapperQueries;
+using IIoT.Services.Common.Contracts.RecordQueries;
 using IIoT.SharedKernel.Paging;
 
 namespace IIoT.Dapper.Production.QueryServices.PassStation;
 
-public class PassStationQueryService(IDbConnectionFactory connectionFactory) : IPassStationQueryService
+public sealed class PassStationQueryService<TDto>(
+    IDbConnectionFactory connectionFactory,
+    IPassStationQuerySql<TDto> sql)
+    : IPassStationQueryService<TDto>
 {
-    public async Task<(List<InjectionPassListItemDto> Items, int TotalCount)> GetInjectionByConditionAsync(
+    public async Task<(List<TDto> Items, int TotalCount)> GetByConditionAsync(
         Pagination pagination,
         List<Guid>? deviceIds = null,
         Guid? deviceId = null,
@@ -17,10 +20,99 @@ public class PassStationQueryService(IDbConnectionFactory connectionFactory) : I
     {
         using var connection = connectionFactory.CreateConnection();
 
+        var (conditions, parameters) = BuildWhereClause(deviceIds, deviceId, barcode, startTime, endTime);
+        parameters.Add("Offset", (pagination.PageNumber - 1) * pagination.PageSize);
+        parameters.Add("PageSize", pagination.PageSize);
+
+        var dataSql = $"""
+            SELECT {sql.SelectColumns}
+            FROM {sql.TableName}
+            {conditions}
+            ORDER BY completed_time DESC
+            OFFSET @Offset ROWS FETCH NEXT @PageSize ROWS ONLY
+            """;
+
+        var countSql = $"SELECT COUNT(*) FROM {sql.TableName} {conditions}";
+
+        var items = (await connection.QueryAsync<TDto>(
+            new CommandDefinition(dataSql, parameters, cancellationToken: cancellationToken))).ToList();
+
+        var totalCount = await connection.ExecuteScalarAsync<int>(
+            new CommandDefinition(countSql, parameters, cancellationToken: cancellationToken));
+
+        return (items, totalCount);
+    }
+
+    public async Task<TDto?> GetDetailAsync(
+        Guid id,
+        CancellationToken cancellationToken = default)
+    {
+        using var connection = connectionFactory.CreateConnection();
+
+        var detailSql = $"""
+            SELECT {sql.SelectColumns}
+            FROM {sql.TableName}
+            WHERE id = @Id
+            """;
+
+        return await connection.QuerySingleOrDefaultAsync<TDto>(
+            new CommandDefinition(detailSql, new { Id = id }, cancellationToken: cancellationToken));
+    }
+
+    public async Task<(List<TDto> Items, int TotalCount)> GetLatest200ByDeviceAsync(
+        Guid deviceId,
+        Pagination pagination,
+        CancellationToken cancellationToken = default)
+    {
+        using var connection = connectionFactory.CreateConnection();
+
+        var dataSql = $"""
+            WITH latest AS (
+                SELECT {sql.SelectColumns},
+                       ROW_NUMBER() OVER (ORDER BY completed_time DESC) AS rn
+                FROM {sql.TableName}
+                WHERE device_id = @DeviceId
+            )
+            SELECT {MapCteColumns(sql.SelectColumns)}
+            FROM latest
+            WHERE rn <= 200
+            ORDER BY CompletedTime DESC
+            OFFSET @Offset ROWS FETCH NEXT @PageSize ROWS ONLY
+            """;
+
+        var countSql = $"""
+            SELECT LEAST(COUNT(*), 200)
+            FROM {sql.TableName}
+            WHERE device_id = @DeviceId
+            """;
+
+        var parameters = new
+        {
+            DeviceId = deviceId,
+            Offset = (pagination.PageNumber - 1) * pagination.PageSize,
+            PageSize = pagination.PageSize
+        };
+
+        var items = (await connection.QueryAsync<TDto>(
+            new CommandDefinition(dataSql, parameters, cancellationToken: cancellationToken))).ToList();
+
+        var totalCount = await connection.ExecuteScalarAsync<int>(
+            new CommandDefinition(countSql, new { DeviceId = deviceId }, cancellationToken: cancellationToken));
+
+        return (items, totalCount);
+    }
+
+    private static (string Conditions, DynamicParameters Parameters) BuildWhereClause(
+        List<Guid>? deviceIds,
+        Guid? deviceId,
+        string? barcode,
+        DateTime? startTime,
+        DateTime? endTime)
+    {
         var conditions = "WHERE 1=1";
         var parameters = new DynamicParameters();
 
-        if (deviceIds != null && deviceIds.Count > 0)
+        if (deviceIds is { Count: > 0 })
         {
             conditions += " AND device_id = ANY(@DeviceIds)";
             parameters.Add("DeviceIds", deviceIds.ToArray());
@@ -50,108 +142,19 @@ public class PassStationQueryService(IDbConnectionFactory connectionFactory) : I
             parameters.Add("EndTime", endTime.Value);
         }
 
-        var dataSql = $@"
-            SELECT id                   AS Id,
-                   device_id            AS DeviceId,
-                   barcode              AS Barcode,
-                   cell_result          AS CellResult,
-                   pre_injection_time   AS PreInjectionTime,
-                   pre_injection_weight AS PreInjectionWeight,
-                   post_injection_time  AS PostInjectionTime,
-                   post_injection_weight AS PostInjectionWeight,
-                   injection_volume     AS InjectionVolume,
-                   completed_time       AS CompletedTime,
-                   received_at          AS ReceivedAt
-            FROM pass_data_injection
-            {conditions}
-            ORDER BY completed_time DESC
-            OFFSET @Offset ROWS FETCH NEXT @PageSize ROWS ONLY";
-
-        var countSql = $"SELECT COUNT(*) FROM pass_data_injection {conditions}";
-
-        var offset = (pagination.PageNumber - 1) * pagination.PageSize;
-        parameters.Add("Offset", offset);
-        parameters.Add("PageSize", pagination.PageSize);
-
-        var command = new CommandDefinition(dataSql, parameters, cancellationToken: cancellationToken);
-        var countCommand = new CommandDefinition(countSql, parameters, cancellationToken: cancellationToken);
-
-        var items = (await connection.QueryAsync<InjectionPassListItemDto>(command)).ToList();
-        var totalCount = await connection.ExecuteScalarAsync<int>(countCommand);
-
-        return (items, totalCount);
+        return (conditions, parameters);
     }
 
-    public async Task<InjectionPassDetailDto?> GetInjectionDetailAsync(Guid id, CancellationToken cancellationToken = default)
+    private static string MapCteColumns(string selectColumns)
     {
-        using var connection = connectionFactory.CreateConnection();
+        var aliases = selectColumns
+            .Split(',')
+            .Select(column =>
+            {
+                var parts = column.Trim().Split(" AS ", StringSplitOptions.RemoveEmptyEntries);
+                return parts.Length > 1 ? parts[^1].Trim() : parts[0].Trim();
+            });
 
-        const string sql = @"
-            SELECT id                   AS Id,
-                   device_id            AS DeviceId,
-                   cell_result          AS CellResult,
-                   completed_time       AS CompletedTime,
-                   received_at          AS ReceivedAt,
-                   barcode              AS Barcode,
-                   pre_injection_time   AS PreInjectionTime,
-                   pre_injection_weight AS PreInjectionWeight,
-                   post_injection_time  AS PostInjectionTime,
-                   post_injection_weight AS PostInjectionWeight,
-                   injection_volume     AS InjectionVolume
-            FROM pass_data_injection
-            WHERE id = @Id";
-        var command = new CommandDefinition(sql, new { Id = id }, cancellationToken: cancellationToken);
-
-        return await connection.QuerySingleOrDefaultAsync<InjectionPassDetailDto>(command);
-    }
-
-    public async Task<(List<InjectionPassListItemDto> Items, int TotalCount)> GetInjectionLatest200ByDeviceAsync(
-        Guid deviceId,
-        Pagination pagination,
-        CancellationToken cancellationToken = default)
-    {
-        using var connection = connectionFactory.CreateConnection();
-
-        var dataSql = @"
-            WITH latest AS (
-                SELECT id                   AS Id,
-                       device_id            AS DeviceId,
-                       barcode              AS Barcode,
-                       cell_result          AS CellResult,
-                       pre_injection_time   AS PreInjectionTime,
-                       pre_injection_weight AS PreInjectionWeight,
-                       post_injection_time  AS PostInjectionTime,
-                       post_injection_weight AS PostInjectionWeight,
-                       injection_volume     AS InjectionVolume,
-                       completed_time       AS CompletedTime,
-                       received_at          AS ReceivedAt,
-                       ROW_NUMBER() OVER (ORDER BY completed_time DESC) AS rn
-                FROM pass_data_injection
-                WHERE device_id = @DeviceId
-            )
-            SELECT Id, DeviceId, Barcode, CellResult,
-                   PreInjectionTime, PreInjectionWeight,
-                   PostInjectionTime, PostInjectionWeight,
-                   InjectionVolume, CompletedTime, ReceivedAt
-            FROM latest
-            WHERE rn <= 200
-            ORDER BY CompletedTime DESC
-            OFFSET @Offset ROWS FETCH NEXT @PageSize ROWS ONLY";
-
-        var countSql = @"
-            SELECT LEAST(COUNT(*), 200)
-            FROM pass_data_injection
-            WHERE device_id = @DeviceId";
-
-        var offset = (pagination.PageNumber - 1) * pagination.PageSize;
-        var parameters = new { DeviceId = deviceId, Offset = offset, PageSize = pagination.PageSize };
-
-        var command = new CommandDefinition(dataSql, parameters, cancellationToken: cancellationToken);
-        var countCommand = new CommandDefinition(countSql, new { DeviceId = deviceId }, cancellationToken: cancellationToken);
-
-        var items = (await connection.QueryAsync<InjectionPassListItemDto>(command)).ToList();
-        var totalCount = await connection.ExecuteScalarAsync<int>(countCommand);
-
-        return (items, totalCount);
+        return string.Join(", ", aliases);
     }
 }

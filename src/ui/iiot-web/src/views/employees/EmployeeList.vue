@@ -33,13 +33,13 @@
       <table v-else class="data-table">
         <thead>
           <tr>
-            <th>工号</th><th>姓名</th><th>状态</th><th>工序管辖</th><th>机台管辖</th>
+            <th>工号</th><th>姓名</th><th>状态</th><th>设备管辖</th>
             <th style="text-align:right">操作</th>
           </tr>
         </thead>
         <tbody>
           <tr v-if="employees.length === 0">
-            <td colspan="6" class="empty-cell">
+            <td colspan="5" class="empty-cell">
               <div class="empty-state">
                 <svg viewBox="0 0 48 48" fill="none"><rect x="8" y="12" width="32" height="28" rx="3" stroke="currentColor" stroke-width="1.5" opacity="0.3"/><path d="M16 20h16M16 28h10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" opacity="0.3"/></svg>
                 <p>暂无员工档案</p>
@@ -54,7 +54,6 @@
                 <span class="status-dot"></span>{{ emp.isActive ? '在职' : '停用' }}
               </span>
             </td>
-            <td><span class="access-badge">{{ emp.processCount }} 项</span></td>
             <td><span class="access-badge device">{{ emp.deviceCount }} 台</span></td>
             <td class="action-cell" @click.stop>
               <button class="icon-btn edit" title="编辑档案" v-permission="'Employee.Update'" @click="openEditModal(emp)">
@@ -126,25 +125,12 @@
               </div>
             </div>
             <div class="form-section-label" style="margin-top:20px">
-              双维管辖权 <span class="section-hint">（可选，入职后也可单独配置）</span>
+              设备管辖权 <span class="section-hint">（可选，入职后也可单独配置）</span>
             </div>
             <div class="dual-access-grid">
               <div class="access-panel">
-                <div class="access-panel-title">工序管辖（粗颗粒）</div>
-                <div class="access-hint">选中工序后，员工可访问该工序下所有通用配方</div>
-                <div class="access-checklist">
-                  <label v-for="p in allProcesses" :key="p.id" class="access-check-item">
-                    <input type="checkbox" :value="p.id" v-model="onboardProcessIds" />
-                    <span class="ck-box"></span>
-                    <span class="ck-code">{{ p.processCode }}</span>
-                    <span class="ck-name">{{ p.processName }}</span>
-                  </label>
-                  <div v-if="allProcesses.length===0" class="access-empty">暂无工序，请先前往工序管理创建</div>
-                </div>
-              </div>
-              <div class="access-panel">
-                <div class="access-panel-title">机台管辖（精细颗粒）</div>
-                <div class="access-hint">选中具体机台后，员工可访问该机台的专属配方</div>
+                <div class="access-panel-title">可访问设备</div>
+                <div class="access-hint">选中设备后，员工可查看该设备相关的日志、过站和配方数据</div>
                 <div class="access-checklist">
                   <label v-for="d in allDevices" :key="d.id" class="access-check-item">
                     <input type="checkbox" :value="d.id" v-model="onboardDeviceIds" />
@@ -196,28 +182,15 @@
       <div v-if="showAccessModal" class="modal-overlay" @click.self="showAccessModal=false">
         <div class="modal">
           <div class="modal-header">
-            <span class="modal-title">配置双维管辖权</span>
+            <span class="modal-title">配置设备管辖权</span>
             <button class="modal-close" @click="showAccessModal=false">✕</button>
           </div>
           <div class="modal-body">
             <div class="access-loading" v-if="accessLoading">加载数据中...</div>
             <div v-else class="dual-access-grid">
               <div class="access-panel">
-                <div class="access-panel-title">工序管辖（粗颗粒）</div>
-                <div class="access-hint">当前已分配 {{ accessForm.ProcessIds.length }} 个工序</div>
-                <div class="access-checklist">
-                  <label v-for="p in allProcesses" :key="p.id" class="access-check-item">
-                    <input type="checkbox" :value="p.id" v-model="accessForm.ProcessIds" />
-                    <span class="ck-box"></span>
-                    <span class="ck-code">{{ p.processCode }}</span>
-                    <span class="ck-name">{{ p.processName }}</span>
-                  </label>
-                  <div v-if="allProcesses.length===0" class="access-empty">暂无工序数据</div>
-                </div>
-              </div>
-              <div class="access-panel">
-                <div class="access-panel-title">机台管辖（精细颗粒）</div>
-                <div class="access-hint">当前已分配 {{ accessForm.DeviceIds.length }} 台机台</div>
+                <div class="access-panel-title">可访问设备</div>
+                <div class="access-hint">当前已分配 {{ accessForm.DeviceIds.length }} 台设备</div>
                 <div class="access-checklist">
                   <label v-for="d in allDevices" :key="d.id" class="access-check-item">
                     <input type="checkbox" :value="d.id" v-model="accessForm.DeviceIds" />
@@ -255,12 +228,6 @@
                 </span>
               </div>
               <div class="detail-item"><span class="detail-label">系统ID</span><span class="detail-value id-text">{{ detailData.id }}</span></div>
-              <div class="detail-item full"><span class="detail-label">工序管辖</span>
-                <div class="id-chips" v-if="detailData.processIds.length">
-                  <span v-for="id in detailData.processIds" :key="id" class="id-chip">{{ processNameMap[id] || id.substring(0,8)+'…' }}</span>
-                </div>
-                <span v-else class="detail-value muted">未分配</span>
-              </div>
               <div class="detail-item full"><span class="detail-label">机台管辖</span>
                 <div class="id-chips" v-if="detailData.deviceIds.length">
                   <span v-for="id in detailData.deviceIds" :key="id" class="id-chip device">{{ deviceNameMap[id] || id.substring(0,8)+'…' }}</span>
@@ -369,7 +336,6 @@ import {
   deactivateEmployeeApi, terminateEmployeeApi, getAllRolesApi,
   type EmployeeListItemDto, type EmployeeDetailDto, type PagedMetaData,
 } from '../../api/employee';
-import { getAllMfgProcessesApi, type MfgProcessSelectDto } from '../../api/mfgProcess';
 import { getAllActiveDevicesApi, type DeviceSelectDto } from '../../api/device';
 import { resetPasswordApi, getUserPersonalPermissionsApi, updateUserPermissionsApi, getAllDefinedPermissionsApi, type PermissionGroupDto } from '../../api/identity';
 
@@ -381,16 +347,8 @@ const metaData = ref<PagedMetaData>({ totalCount: 0, pageSize: 10, currentPage: 
 const availableRoles = ref<string[]>([]);
 const submitting = ref(false);
 
-// 🌟 全量工序和设备列表（供多选器使用）
-const allProcesses = ref<MfgProcessSelectDto[]>([]);
 const allDevices = ref<DeviceSelectDto[]>([]);
 
-// 名称映射表（详情展示用）
-const processNameMap = computed(() => {
-  const m: Record<string, string> = {};
-  for (const p of allProcesses.value) m[p.id] = `${p.processCode} · ${p.processName}`;
-  return m;
-});
 const deviceNameMap = computed(() => {
   const m: Record<string, string> = {};
   for (const d of allDevices.value) m[d.id] = d.deviceName;
@@ -399,8 +357,7 @@ const deviceNameMap = computed(() => {
 
 // 拉取下拉数据
 const fetchSelectData = async () => {
-  try { allProcesses.value = await getAllMfgProcessesApi() as unknown as MfgProcessSelectDto[]; } catch { allProcesses.value = []; }
-  try { allDevices.value = await getAllActiveDevicesApi() as unknown as DeviceSelectDto[]; } catch { allDevices.value = []; }
+  try { allDevices.value = await getAllActiveDevicesApi(); } catch { allDevices.value = []; }
 };
 
 const pageNumbers = computed(() => {
@@ -420,16 +377,12 @@ const onSearchInput = () => {
 const fetchList = async () => {
   loading.value = true;
   try {
-    const raw = await getEmployeePagedListApi({
+    const response = await getEmployeePagedListApi({
       PaginationParams: { PageNumber: currentPage.value, PageSize: 10 },
       Keyword: keyword.value || undefined,
-    }) as unknown as Record<string, unknown>;
-    if (raw && raw.metaData) {
-      metaData.value = raw.metaData as PagedMetaData;
-      employees.value = Array.isArray(raw.items) ? raw.items as EmployeeListItemDto[] : [];
-    } else if (Array.isArray(raw)) {
-      employees.value = raw as EmployeeListItemDto[];
-    }
+    });
+    metaData.value = response.metaData;
+    employees.value = response.items;
   } catch { employees.value = []; } finally { loading.value = false; }
 };
 
@@ -438,16 +391,14 @@ const goPage = (page: number) => { currentPage.value = page; fetchList(); };
 // ── 入职弹窗 ──
 const showOnboardModal = ref(false);
 const onboardForm = reactive({ EmployeeNo: '', RealName: '', Password: '', RoleName: '' });
-const onboardProcessIds = ref<string[]>([]);
 const onboardDeviceIds = ref<string[]>([]);
 
 const openOnboardModal = async () => {
   Object.assign(onboardForm, { EmployeeNo: '', RealName: '', Password: '', RoleName: '' });
-  onboardProcessIds.value = [];
   onboardDeviceIds.value = [];
   showOnboardModal.value = true;
   try {
-    const roles = await getAllRolesApi() as unknown as string[];
+    const roles = await getAllRolesApi();
     availableRoles.value = roles.filter(r => r !== 'Admin');
   } catch { availableRoles.value = []; }
   await fetchSelectData();
@@ -496,15 +447,15 @@ const submitEdit = async () => {
 const showAccessModal = ref(false);
 const accessLoading = ref(false);
 const accessTargetId = ref('');
-const accessForm = reactive({ ProcessIds: [] as string[], DeviceIds: [] as string[] });
+const accessForm = reactive({ DeviceIds: [] as string[] });
 
 const openAccessModal = async (id: string) => {
   accessTargetId.value = id; accessLoading.value = true; showAccessModal.value = true;
   await fetchSelectData();
   try {
-    const access = await getEmployeeAccessApi(id) as unknown as { processIds: string[]; deviceIds: string[] };
-    accessForm.ProcessIds = [...(access.processIds || [])]; accessForm.DeviceIds = [...(access.deviceIds || [])];
-  } catch { accessForm.ProcessIds = []; accessForm.DeviceIds = []; } finally { accessLoading.value = false; }
+    const access = await getEmployeeAccessApi(id);
+    accessForm.DeviceIds = [...access.deviceIds];
+  } catch { accessForm.DeviceIds = []; } finally { accessLoading.value = false; }
 };
 
 const submitAccess = async () => {
@@ -524,7 +475,7 @@ const detailData = ref<EmployeeDetailDto | null>(null);
 
 const openDetailModal = async (id: string) => {
   try {
-    detailData.value = await getEmployeeDetailApi(id) as unknown as EmployeeDetailDto;
+    detailData.value = await getEmployeeDetailApi(id);
     showDetailModal.value = true;
   } catch { }
 };

@@ -20,7 +20,8 @@ public sealed class DeviceLogRecordRepository(IDbConnectionFactory connectionFac
                 level,
                 message,
                 log_time,
-                received_at
+                received_at,
+                idempotency_key
             )
             values
             (
@@ -29,8 +30,12 @@ public sealed class DeviceLogRecordRepository(IDbConnectionFactory connectionFac
                 @Level,
                 @Message,
                 @LogTime,
-                @ReceivedAt
-            );
+                @ReceivedAt,
+                @IdempotencyKey
+            )
+            on conflict (device_id, log_time, idempotency_key)
+                where idempotency_key is not null
+            do nothing;
             """;
 
         using var connection = connectionFactory.CreateConnection();

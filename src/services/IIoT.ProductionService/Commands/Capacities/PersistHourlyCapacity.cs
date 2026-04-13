@@ -1,5 +1,5 @@
 using IIoT.Core.Production.Contracts.RecordRepositories;
-using IIoT.Services.Common.Contracts.DapperQueries;
+using IIoT.Services.Common.Contracts.RecordQueries;
 using IIoT.Services.Common.Events;
 using IIoT.SharedKernel.Messaging;
 using IIoT.SharedKernel.Result;
@@ -7,7 +7,7 @@ using IIoT.SharedKernel.Result;
 namespace IIoT.ProductionService.Commands.Capacities;
 
 /// <summary>
-/// Persist command dispatched by DataWorker after message consumption.
+/// 半小时产能落库命令。
 /// </summary>
 public record PersistHourlyCapacityCommand(
     HourlyCapacityReceivedEvent Event

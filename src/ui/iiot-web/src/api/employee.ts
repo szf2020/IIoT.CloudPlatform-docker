@@ -31,8 +31,7 @@ export interface EmployeeListItemDto {
   employeeNo: string;
   realName: string;
   isActive: boolean;
-  processCount: number;  // 工序管辖数量（后端一次查完，无需额外请求）
-  deviceCount: number;   // 机台管辖数量
+  deviceCount: number;
 }
 
 /** 员工详情 DTO */
@@ -41,13 +40,11 @@ export interface EmployeeDetailDto {
   employeeNo: string;
   realName: string;
   isActive: boolean;
-  processIds: string[];
   deviceIds: string[];
 }
 
-/** 员工双维管辖权 DTO */
+/** 员工设备管辖权 DTO */
 export interface EmployeeAccessDto {
-  processIds: string[];
   deviceIds: string[];
 }
 

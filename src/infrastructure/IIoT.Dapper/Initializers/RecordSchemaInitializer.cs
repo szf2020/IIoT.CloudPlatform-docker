@@ -16,7 +16,7 @@ namespace IIoT.Dapper.Initializers;
 /// </summary>
 public sealed class RecordSchemaInitializer(
     IDbConnectionFactory connectionFactory,
-    ILogger<RecordSchemaInitializer> logger)
+    ILogger<RecordSchemaInitializer> logger) : IRecordSchemaInitializer
 {
     private const string SchemaRelativePath = "Production/Sql/Schemas";
 

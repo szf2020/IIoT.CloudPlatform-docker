@@ -9,7 +9,8 @@ public sealed record DeviceLogWriteModel(
     string Level,
     string Message,
     DateTime LogTime,
-    DateTime ReceivedAt);
+    DateTime ReceivedAt,
+    string IdempotencyKey);
 
 public interface IDeviceLogRecordRepository
 {

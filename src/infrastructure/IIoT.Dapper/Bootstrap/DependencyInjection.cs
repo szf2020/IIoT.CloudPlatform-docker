@@ -1,6 +1,8 @@
-﻿using Dapper;
+using Dapper;
+using IIoT.Core.Production.Contracts.PassStation;
 using IIoT.Core.Production.Contracts.RecordRepositories;
 using IIoT.Dapper.Initializers;
+using IIoT.Dapper.Production.PassStations;
 using IIoT.Dapper.Production.QueryServices.Capacity;
 using IIoT.Dapper.Production.QueryServices.Device;
 using IIoT.Dapper.Production.QueryServices.DeviceLog;
@@ -9,7 +11,7 @@ using IIoT.Dapper.Production.Repositories.Capacities;
 using IIoT.Dapper.Production.Repositories.DeviceLogs;
 using IIoT.Dapper.Production.Repositories.PassStations;
 using IIoT.Dapper.TypeHandlers;
-using IIoT.Services.Common.Contracts.DapperQueries;
+using IIoT.Services.Common.Contracts.RecordQueries;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -26,22 +28,23 @@ public static class DependencyInjection
         {
             var config = sp.GetRequiredService<IConfiguration>();
             var connStr = config.GetConnectionString("iiot-db")
-                ?? throw new InvalidOperationException("缺少 iiot-db 连接字符串");
+                ?? throw new InvalidOperationException("\u7F3A\u5C11 iiot-db \u8FDE\u63A5\u5B57\u7B26\u4E32");
             return new NpgsqlConnectionFactory(connStr);
         });
 
-        // 记录表 schema 初始化器,由 MigrationWorkApp 在启动时显式调用
-        builder.Services.AddScoped<RecordSchemaInitializer>();
+        builder.Services.AddScoped<IRecordSchemaInitializer, RecordSchemaInitializer>();
 
-        // 查询服务(跨聚合/记录类的只读查询入口,返回 DTO 不返回实体)
         builder.Services.AddScoped<IDeviceLogQueryService, DeviceLogQueryService>();
         builder.Services.AddScoped<ICapacityQueryService, CapacityQueryService>();
-        builder.Services.AddScoped<IPassStationQueryService, PassStationQueryService>();
         builder.Services.AddScoped<IDeviceIdentityQueryService, DeviceIdentityQueryService>();
+        builder.Services.AddScoped(typeof(IPassStationQueryService<>), typeof(PassStationQueryService<>));
 
-        // 记录类写入仓储(由 Application 层用例调用)
         builder.Services.AddScoped<IDeviceLogRecordRepository, DeviceLogRecordRepository>();
         builder.Services.AddScoped<IHourlyCapacityRecordRepository, HourlyCapacityRecordRepository>();
-        builder.Services.AddScoped<IPassDataInjectionRecordRepository, PassDataInjectionRecordRepository>();
+        builder.Services.AddScoped(typeof(IPassStationRepository<>), typeof(PassStationRepository<>));
+
+        builder.Services.AddSingleton<IPassStationWriteSql<InjectionWriteModel>, InjectionPassStationSql>();
+        builder.Services.AddSingleton<IPassStationQuerySql<InjectionPassListItemDto>, InjectionPassStationSql>();
+        builder.Services.AddSingleton<IPassStationQuerySql<InjectionPassDetailDto>, InjectionPassStationSql>();
     }
 }

@@ -8,13 +8,27 @@ export interface PagedList<T> {
 	metaData: PagedMetaData;
 }
 
-export interface InjectionPassDto {
+export interface InjectionPassListItemDto {
 	id: string;
 	deviceId: string;
-	processId: string;
 	barcode: string;
 	cellResult: string;
+	preInjectionTime: string;
+	preInjectionWeight: number;
+	postInjectionTime: string;
+	postInjectionWeight: number;
+	injectionVolume: number;
 	completedTime: string;
+	receivedAt: string;
+}
+
+export interface InjectionPassDetailDto {
+	id: string;
+	deviceId: string;
+	cellResult: string;
+	completedTime: string;
+	receivedAt: string;
+	barcode: string;
 	preInjectionTime: string;
 	preInjectionWeight: number;
 	postInjectionTime: string;
@@ -27,7 +41,7 @@ export const getInjectionByBarcodeAndProcessApi = (params: {
 	processId: string;
 	barcode: string;
 }) => {
-	return http.get<PagedList<InjectionPassDto>>('/PassStation/injection/by-barcode-process', {
+	return http.get<PagedList<InjectionPassListItemDto>>('/PassStation/injection/by-barcode-process', {
 		params: {
 			PageNumber: params.pagination?.PageNumber ?? 1,
 			PageSize: params.pagination?.PageSize ?? 10,
@@ -43,7 +57,7 @@ export const getInjectionByTimeAndProcessApi = (params: {
 	startTime: string;
 	endTime: string;
 }) => {
-	return http.get<PagedList<InjectionPassDto>>('/PassStation/injection/by-time-process', {
+	return http.get<PagedList<InjectionPassListItemDto>>('/PassStation/injection/by-time-process', {
 		params: {
 			PageNumber: params.pagination?.PageNumber ?? 1,
 			PageSize: params.pagination?.PageSize ?? 10,
@@ -59,7 +73,7 @@ export const getInjectionByDeviceAndBarcodeApi = (params: {
 	deviceId: string;
 	barcode: string;
 }) => {
-	return http.get<PagedList<InjectionPassDto>>('/PassStation/injection/by-device-barcode', {
+	return http.get<PagedList<InjectionPassListItemDto>>('/PassStation/injection/by-device-barcode', {
 		params: {
 			PageNumber: params.pagination?.PageNumber ?? 1,
 			PageSize: params.pagination?.PageSize ?? 10,
@@ -75,7 +89,7 @@ export const getInjectionByDeviceAndTimeApi = (params: {
 	startTime: string;
 	endTime: string;
 }) => {
-	return http.get<PagedList<InjectionPassDto>>('/PassStation/injection/by-device-time', {
+	return http.get<PagedList<InjectionPassListItemDto>>('/PassStation/injection/by-device-time', {
 		params: {
 			PageNumber: params.pagination?.PageNumber ?? 1,
 			PageSize: params.pagination?.PageSize ?? 10,
@@ -90,7 +104,7 @@ export const getInjectionLatest200ByDeviceApi = (params: {
 	pagination?: Pagination;
 	deviceId: string;
 }) => {
-	return http.get<PagedList<InjectionPassDto>>(`/PassStation/injection/device/${params.deviceId}/latest`, {
+	return http.get<PagedList<InjectionPassListItemDto>>(`/PassStation/injection/device/${params.deviceId}/latest`, {
 		params: {
 			PageNumber: params.pagination?.PageNumber ?? 1,
 			PageSize: params.pagination?.PageSize ?? 10,
@@ -99,5 +113,5 @@ export const getInjectionLatest200ByDeviceApi = (params: {
 };
 
 export const getInjectionDetailApi = (id: string) => {
-	return http.get<InjectionPassDto>(`/PassStation/injection/${id}`);
+	return http.get<InjectionPassDetailDto>(`/PassStation/injection/${id}`);
 };

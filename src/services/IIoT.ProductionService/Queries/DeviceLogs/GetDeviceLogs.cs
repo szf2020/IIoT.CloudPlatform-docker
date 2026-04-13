@@ -1,4 +1,4 @@
-using IIoT.Services.Common.Contracts.DapperQueries;
+using IIoT.Services.Common.Contracts.RecordQueries;
 using IIoT.SharedKernel.Messaging;
 using IIoT.SharedKernel.Paging;
 using IIoT.SharedKernel.Result;
@@ -6,8 +6,8 @@ using IIoT.SharedKernel.Result;
 namespace IIoT.ProductionService.Queries.DeviceLogs;
 
 /// <summary>
-/// 通用设备日志查询。所有可选条件在内部走漏斗方法组合,
-/// Controller 层 5 个 URL action 共用这一个 Query。
+/// 设备日志条件查询。
+/// 供日志控制器的多个筛选入口复用。
 /// </summary>
 public record GetDeviceLogsQuery(
     Pagination PaginationParams,

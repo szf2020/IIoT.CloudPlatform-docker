@@ -1,5 +1,5 @@
 using IIoT.Services.Common.Contracts;
-using IIoT.Services.Common.Contracts.DapperQueries;
+using IIoT.Services.Common.Contracts.RecordQueries;
 using IIoT.SharedKernel.Messaging;
 using IIoT.SharedKernel.Paging;
 using IIoT.SharedKernel.Result;
@@ -7,7 +7,7 @@ using IIoT.SharedKernel.Result;
 namespace IIoT.ProductionService.Queries.Capacities;
 
 /// <summary>
-/// 查询：所有机台产能分页加载（延迟加载，带设备名称和良率，缓存优先）
+/// 机台日产能分页查询。
 /// </summary>
 public record GetDailyCapacityPagedQuery(
     Pagination PaginationParams,

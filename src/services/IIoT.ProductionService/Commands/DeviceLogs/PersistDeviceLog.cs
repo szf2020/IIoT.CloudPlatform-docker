@@ -1,5 +1,5 @@
 using IIoT.Core.Production.Contracts.RecordRepositories;
-using IIoT.Services.Common.Contracts.DapperQueries;
+using IIoT.Services.Common.Contracts.RecordQueries;
 using IIoT.Services.Common.Events;
 using IIoT.SharedKernel.Messaging;
 using IIoT.SharedKernel.Result;
@@ -7,7 +7,7 @@ using IIoT.SharedKernel.Result;
 namespace IIoT.ProductionService.Commands.DeviceLogs;
 
 /// <summary>
-/// Persist command dispatched by DataWorker after message consumption.
+/// 设备日志落库命令。
 /// </summary>
 public record PersistDeviceLogCommand(
     DeviceLogReceivedEvent Event
@@ -35,14 +35,23 @@ public class PersistDeviceLogHandler(
 
         var receivedAt = DateTime.UtcNow;
 
-        var writeModels = evt.Logs.Select(item => new DeviceLogWriteModel(
-            Id: Guid.NewGuid(),
-            DeviceId: evt.DeviceId,
-            Level: item.Level,
-            Message: item.Message,
-            LogTime: DateTime.SpecifyKind(item.LogTime, DateTimeKind.Utc),
-            ReceivedAt: receivedAt
-        )).ToList();
+        var writeModels = evt.Logs.Select(item =>
+        {
+            var logTime = DeviceLogIdempotency.NormalizeLogTime(item.LogTime);
+
+            return new DeviceLogWriteModel(
+                Id: Guid.NewGuid(),
+                DeviceId: evt.DeviceId,
+                Level: item.Level,
+                Message: item.Message,
+                LogTime: logTime,
+                ReceivedAt: receivedAt,
+                IdempotencyKey: DeviceLogIdempotency.CreateKey(
+                    evt.DeviceId,
+                    item.Level,
+                    item.Message,
+                    logTime));
+        }).ToList();
 
         await repository.InsertBatchAsync(writeModels, cancellationToken);
 

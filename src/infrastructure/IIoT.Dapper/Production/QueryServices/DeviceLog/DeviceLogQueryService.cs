@@ -1,5 +1,5 @@
-﻿using Dapper;
-using IIoT.Services.Common.Contracts.DapperQueries;
+using Dapper;
+using IIoT.Services.Common.Contracts.RecordQueries;
 using IIoT.SharedKernel.Paging;
 
 namespace IIoT.Dapper.Production.QueryServices.DeviceLog;
@@ -17,7 +17,7 @@ public class DeviceLogQueryService(IDbConnectionFactory connectionFactory) : IDe
     {
         using var connection = connectionFactory.CreateConnection();
 
-        // device_id 必传，先走索引缩小范围
+        // device_id 必填，先缩小查询范围。
         var conditions = "WHERE l.device_id = @DeviceId";
         var parameters = new DynamicParameters();
         parameters.Add("DeviceId", deviceId);
@@ -40,7 +40,7 @@ public class DeviceLogQueryService(IDbConnectionFactory connectionFactory) : IDe
             parameters.Add("EndTime", endTime.Value);
         }
 
-        // 模糊搜索放最后，在索引已经缩小的数据集上做过滤
+        // 关键字筛选放在 device_id 之后，避免全表模糊匹配。
         if (!string.IsNullOrWhiteSpace(keyword))
         {
             conditions += " AND l.message LIKE @Keyword";

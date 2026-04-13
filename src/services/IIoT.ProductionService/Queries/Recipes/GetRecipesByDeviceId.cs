@@ -8,7 +8,7 @@ using IIoT.SharedKernel.Result;
 namespace IIoT.ProductionService.Queries.Recipes;
 
 /// <summary>
-/// 配方详情 DTO (包含完整的 ParametersJsonb,边缘端需要拿到完整参数)
+/// 设备侧使用的配方详情。
 /// </summary>
 public record RecipeForDeviceDto(
     Guid Id,
@@ -21,8 +21,7 @@ public record RecipeForDeviceDto(
 );
 
 /// <summary>
-/// 查询:根据设备ID获取该设备可用的配方列表
-/// 边缘端 RecipeSyncTask 定时拉取时使用,不走员工 ABAC 权限校验
+/// 查询设备可用的配方列表。
 /// </summary>
 public record GetRecipesByDeviceIdQuery(Guid DeviceId) : IQuery<Result<List<RecipeForDeviceDto>>>;
 
@@ -38,18 +37,15 @@ public class GetRecipesByDeviceIdHandler(
     {
         var cacheKey = $"iiot:recipes:device:v1:{request.DeviceId}";
 
-        // 1. 缓存优先
         var cached = await cacheService.GetAsync<List<RecipeForDeviceDto>>(cacheKey, cancellationToken);
         if (cached != null) return Result.Success(cached);
 
-        // 2. 断言设备存在且激活
         var deviceExists = await dataQueryService.AnyAsync(
             dataQueryService.Devices.Where(d => d.Id == request.DeviceId));
 
         if (!deviceExists)
             return Result.Failure("查询失败:设备不存在或已停用");
 
-        // 3. 使用规约查询:设备专属配方
         var spec = new RecipeByDeviceIdSpec(request.DeviceId);
         var recipes = await recipeRepository.GetListAsync(spec, cancellationToken);
 
@@ -63,7 +59,6 @@ public class GetRecipesByDeviceIdHandler(
             r.Status.ToString()
         )).ToList();
 
-        // 4. 写入缓存 (2小时过期,与现有配方缓存策略一致)
         await cacheService.SetAsync(cacheKey, dtos, TimeSpan.FromHours(2), cancellationToken);
 
         return Result.Success(dtos);

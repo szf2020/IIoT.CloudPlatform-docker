@@ -10,9 +10,15 @@ export interface PagedList<T> {
   metaData: PagedMetaData;
 }
 
-// ==========================================
-// 查询 API（云端后台设备日志）
-// ==========================================
+export interface DeviceLogListItemDto {
+  id: string;
+  deviceId: string;
+  deviceName: string;
+  level: string;
+  message: string;
+  logTime: string;
+  receivedAt: string;
+}
 
 /** 日志查询一：设备 + 级别 — GET /api/v1/devicelog/by-level */
 export const getLogsByDeviceAndLevelApi = (params: {
@@ -20,7 +26,7 @@ export const getLogsByDeviceAndLevelApi = (params: {
   deviceId: string;
   level?: string;
 }) => {
-  return http.get<PagedList<any>>('/DeviceLog/by-level', {
+  return http.get<PagedList<DeviceLogListItemDto>>('/DeviceLog/by-level', {
     params: {
       PageNumber: params.pagination?.PageNumber ?? 1,
       PageSize: params.pagination?.PageSize ?? 10,
@@ -36,7 +42,7 @@ export const getLogsByDeviceAndKeywordApi = (params: {
   deviceId: string;
   keyword: string;
 }) => {
-  return http.get<PagedList<any>>('/DeviceLog/by-keyword', {
+  return http.get<PagedList<DeviceLogListItemDto>>('/DeviceLog/by-keyword', {
     params: {
       PageNumber: params.pagination?.PageNumber ?? 1,
       PageSize: params.pagination?.PageSize ?? 10,
@@ -52,7 +58,7 @@ export const getLogsByDeviceAndDateApi = (params: {
   deviceId: string;
   date: string;
 }) => {
-  return http.get<PagedList<any>>('/DeviceLog/by-date', {
+  return http.get<PagedList<DeviceLogListItemDto>>('/DeviceLog/by-date', {
     params: {
       PageNumber: params.pagination?.PageNumber ?? 1,
       PageSize: params.pagination?.PageSize ?? 10,
@@ -69,7 +75,7 @@ export const getLogsByDeviceAndTimeRangeApi = (params: {
   startTime: string;
   endTime: string;
 }) => {
-  return http.get<PagedList<any>>('/DeviceLog/by-time-range', {
+  return http.get<PagedList<DeviceLogListItemDto>>('/DeviceLog/by-time-range', {
     params: {
       PageNumber: params.pagination?.PageNumber ?? 1,
       PageSize: params.pagination?.PageSize ?? 10,
@@ -87,7 +93,7 @@ export const getLogsByDeviceDateAndKeywordApi = (params: {
   date: string;
   keyword: string;
 }) => {
-  return http.get<PagedList<any>>('/DeviceLog/by-date-keyword', {
+  return http.get<PagedList<DeviceLogListItemDto>>('/DeviceLog/by-date-keyword', {
     params: {
       PageNumber: params.pagination?.PageNumber ?? 1,
       PageSize: params.pagination?.PageSize ?? 10,

@@ -6,10 +6,8 @@ using MediatR;
 namespace IIoT.DataWorker.Consumers;
 
 /// <summary>
-/// 设备日志消费者。
-/// MQ 接收 DeviceLogReceivedEvent(整批共享同一 DeviceId)→
-/// 派发 PersistDeviceLogCommand → Handler 调 Repository InsertBatch 落库。
-/// 并发消费 3 线程,多设备日志并行落库互不阻塞。
+/// 设备日志入库消费者。
+/// Handler 成功返回后确认消息；抛异常时交给 MassTransit 重试。
 /// </summary>
 public sealed class DeviceLogConsumer(ISender sender)
     : IConsumer<DeviceLogReceivedEvent>
@@ -21,6 +19,6 @@ public sealed class DeviceLogConsumer(ISender sender)
 
         if (!result.IsSuccess)
             throw new InvalidOperationException(
-                $"设备日志批量落库失败:{string.Join("; ", result.Errors ?? [])}");
+                $"设备日志批量落库失败: {string.Join("; ", result.Errors ?? [])}");
     }
 }

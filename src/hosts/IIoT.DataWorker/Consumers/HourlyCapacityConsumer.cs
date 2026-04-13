@@ -6,10 +6,8 @@ using MediatR;
 namespace IIoT.DataWorker.Consumers;
 
 /// <summary>
-/// 半小时产能数据消费者。
-/// MQ 接收 HourlyCapacityReceivedEvent → 派发 PersistHourlyCapacityCommand →
-/// PersistHourlyCapacityHandler 调 Repository Upsert 落库。
-/// 单线程消费(ConcurrentMessageLimit = 1),保证同一设备同槽位的幂等顺序。
+/// 半小时产能入库消费者。
+/// Handler 成功返回后确认消息；抛异常时交给 MassTransit 重试。
 /// </summary>
 public sealed class HourlyCapacityConsumer(ISender sender)
     : IConsumer<HourlyCapacityReceivedEvent>
@@ -21,6 +19,6 @@ public sealed class HourlyCapacityConsumer(ISender sender)
 
         if (!result.IsSuccess)
             throw new InvalidOperationException(
-                $"半小时产能落库失败:{string.Join("; ", result.Errors ?? [])}");
+                $"半小时产能落库失败: {string.Join("; ", result.Errors ?? [])}");
     }
 }

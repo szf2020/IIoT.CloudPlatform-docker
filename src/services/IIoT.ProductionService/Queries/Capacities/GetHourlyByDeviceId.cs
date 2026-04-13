@@ -1,13 +1,13 @@
-﻿using IIoT.Services.Common.Contracts;
-using IIoT.Services.Common.Contracts.DapperQueries;
+using IIoT.Services.Common.Contracts;
+using IIoT.Services.Common.Contracts.RecordQueries;
 using IIoT.SharedKernel.Messaging;
 using IIoT.SharedKernel.Result;
 
 namespace IIoT.ProductionService.Queries.Capacities;
 
 /// <summary>
-/// 按日查询半小时明细（按 deviceId 查询，统一唯一标识）
-/// plcName 可选，传入时只返回该 PLC 的数据
+/// 查询指定设备在某天的小时产能明细。
+/// 传入 plcName 时只返回对应 PLC 的数据。
 /// </summary>
 public record GetHourlyByDeviceIdQuery(
     Guid DeviceId,

@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace IIoT.HttpApi.Controllers;
 
 /// <summary>
-/// 设备科:物理机台与终端中枢 (负责机台寻址、注册与管辖列表维护)
+/// 设备接口。
 /// </summary>
 [Route("api/v1/[controller]")]
 [ApiController]
@@ -14,7 +14,7 @@ namespace IIoT.HttpApi.Controllers;
 public class DeviceController : ApiControllerBase
 {
     /// <summary>
-    /// 上位机轮询认证(凭 MAC + ClientCode 换取 DeviceId)
+    /// 按实例标识获取设备。
     /// </summary>
     [HttpGet("instance")]
     public async Task<IActionResult> GetByInstance(
@@ -27,7 +27,7 @@ public class DeviceController : ApiControllerBase
     }
 
     /// <summary>
-    /// 获取当前登录人管辖范围内的设备分页列表
+    /// 获取设备分页列表。
     /// </summary>
     [HttpGet]
     public async Task<IActionResult> GetPagedList([FromQuery] GetMyDevicesPagedQuery query)
@@ -37,7 +37,7 @@ public class DeviceController : ApiControllerBase
     }
 
     /// <summary>
-    /// 获取全量设备列表 (供管辖权分配下拉选择器使用,不做 ABAC 数据级过滤)
+    /// 获取全量设备列表。
     /// </summary>
     [HttpGet("all")]
     public async Task<IActionResult> GetAllActive()
@@ -47,7 +47,7 @@ public class DeviceController : ApiControllerBase
     }
 
     /// <summary>
-    /// 注册全新物理设备终端
+    /// 注册设备。
     /// </summary>
     [HttpPost]
     public async Task<IActionResult> Register([FromBody] RegisterDeviceCommand command)
@@ -57,7 +57,7 @@ public class DeviceController : ApiControllerBase
     }
 
     /// <summary>
-    /// 更新设备的业务基础档案 (设备名称)
+    /// 更新设备基础资料。
     /// </summary>
     [HttpPut("{id}")]
     public async Task<IActionResult> UpdateProfile([FromRoute] Guid id, [FromBody] UpdateDeviceProfileCommand command)
@@ -67,7 +67,7 @@ public class DeviceController : ApiControllerBase
     }
 
     /// <summary>
-    /// 删除设备(硬删除)
+    /// 删除设备。
     /// </summary>
     [HttpDelete("{id}")]
     public async Task<IActionResult> Delete([FromRoute] Guid id)

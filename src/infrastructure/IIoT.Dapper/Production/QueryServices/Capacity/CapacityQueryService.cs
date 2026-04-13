@@ -1,12 +1,12 @@
-﻿using Dapper;
-using IIoT.Services.Common.Contracts.DapperQueries;
+using Dapper;
+using IIoT.Services.Common.Contracts.RecordQueries;
 using IIoT.SharedKernel.Paging;
 
 namespace IIoT.Dapper.Production.QueryServices.Capacity;
 
 public class CapacityQueryService(IDbConnectionFactory connectionFactory) : ICapacityQueryService
 {
-    // ── 1. 按日半小时明细 ────────────────────────────────────────────────
+    // 指定设备某天的小时明细。
 
     public async Task<List<HourlyCapacityDto>> GetHourlyByDeviceIdAsync(
         Guid deviceId,
@@ -40,7 +40,7 @@ public class CapacityQueryService(IDbConnectionFactory connectionFactory) : ICap
         return rows.ToList();
     }
 
-    // ── 2. 按日汇总（白班+夜班合并）──────────────────────────────────────
+    // 指定设备某天的白班/夜班汇总。
 
     public async Task<DailySummaryDto?> GetSummaryByDeviceIdAsync(
         Guid deviceId,
@@ -73,7 +73,7 @@ public class CapacityQueryService(IDbConnectionFactory connectionFactory) : ICap
         return MergeSummaryRows(rows);
     }
 
-    // ── 3. 按日期范围汇总（月/年查询，一次请求替代循环N次）──────────────
+    // 日期范围汇总的中间行模型。
 
     private sealed class DailyRangeRow
     {
@@ -153,7 +153,7 @@ public class CapacityQueryService(IDbConnectionFactory connectionFactory) : ICap
         return result;
     }
 
-    // ── 4. 云端后台分页（不加 plcName 过滤，后台管理用途，展示全量数据）──
+    // 后台分页列表不按 plcName 拆分，展示设备当天总量。
 
     public async Task<(List<DailyCapacityPagedItemDto> Items, int TotalCount)> GetDailyPagedAsync(
         Pagination pagination,
@@ -218,7 +218,7 @@ public class CapacityQueryService(IDbConnectionFactory connectionFactory) : ICap
         return (items, totalCount);
     }
 
-    // ── 私有辅助 ─────────────────────────────────────────────────────────
+    // 合并白班/夜班汇总结果。
 
     private static DailySummaryDto MergeSummaryRows(List<dynamic> rows)
     {

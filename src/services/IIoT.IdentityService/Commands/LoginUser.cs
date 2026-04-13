@@ -1,4 +1,3 @@
-﻿// 路径：src/services/IIoT.IdentityService/Commands/LoginUser.cs
 using IIoT.Services.Common.Contracts;
 using IIoT.SharedKernel.Messaging;
 using IIoT.SharedKernel.Result;

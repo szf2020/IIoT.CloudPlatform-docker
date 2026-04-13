@@ -1,13 +1,10 @@
 using IIoT.SharedKernel.Paging;
 
-namespace IIoT.Services.Common.Contracts.DapperQueries;
+namespace IIoT.Services.Common.Contracts.RecordQueries;
 
-/// <summary>
-/// Pass-station query contract (Dapper).
-/// </summary>
-public interface IPassStationQueryService
+public interface IPassStationQueryService<TDto>
 {
-    Task<(List<InjectionPassListItemDto> Items, int TotalCount)> GetInjectionByConditionAsync(
+    Task<(List<TDto> Items, int TotalCount)> GetByConditionAsync(
         Pagination pagination,
         List<Guid>? deviceIds = null,
         Guid? deviceId = null,
@@ -16,9 +13,11 @@ public interface IPassStationQueryService
         DateTime? endTime = null,
         CancellationToken cancellationToken = default);
 
-    Task<InjectionPassDetailDto?> GetInjectionDetailAsync(Guid id, CancellationToken cancellationToken = default);
+    Task<TDto?> GetDetailAsync(
+        Guid id,
+        CancellationToken cancellationToken = default);
 
-    Task<(List<InjectionPassListItemDto> Items, int TotalCount)> GetInjectionLatest200ByDeviceAsync(
+    Task<(List<TDto> Items, int TotalCount)> GetLatest200ByDeviceAsync(
         Guid deviceId,
         Pagination pagination,
         CancellationToken cancellationToken = default);

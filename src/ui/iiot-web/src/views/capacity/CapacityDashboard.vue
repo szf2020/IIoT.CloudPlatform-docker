@@ -171,18 +171,14 @@ const clearFilters   = () => {
 const fetchData = async () => {
   loading.value = true;
   try {
-    const raw = await getDailyPagedApi({
+    const response = await getDailyPagedApi({
       PageNumber: currentPage.value,
       PageSize:   10,
       date:       filterDate.value || undefined,
       deviceId:   filterDeviceId.value || undefined,
-    }) as any;
-    if (raw?.metaData) {
-      metaData.value = raw.metaData;
-      records.value  = Array.isArray(raw.items) ? raw.items : [];
-    } else {
-      records.value = [];
-    }
+    });
+    metaData.value = response.metaData;
+    records.value  = response.items;
   } catch {
     records.value = [];
   } finally {
@@ -197,7 +193,7 @@ const goDetail = (deviceId: string, deviceName: string) => {
 };
 
 onMounted(async () => {
-  try { allDevices.value = await getAllActiveDevicesApi() as unknown as DeviceSelectDto[]; } catch { allDevices.value = []; }
+  try { allDevices.value = await getAllActiveDevicesApi(); } catch { allDevices.value = []; }
   fetchData();
 });
 </script>

@@ -1,4 +1,3 @@
-﻿// 路径：src/services/IIoT.IdentityService/Queries/GetAllDefinedPermissions.cs
 using IIoT.Services.Common.Attributes;
 using IIoT.Services.Common.Contracts;
 using IIoT.SharedKernel.Messaging;

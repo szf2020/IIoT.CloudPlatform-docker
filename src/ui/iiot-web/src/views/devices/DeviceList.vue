@@ -140,7 +140,7 @@ const processNameMap = computed(() => {
   return m;
 });
 const fetchProcesses = async () => {
-  try { allProcesses.value = await getAllMfgProcessesApi() as unknown as MfgProcessSelectDto[]; } catch { allProcesses.value = []; }
+  try { allProcesses.value = await getAllMfgProcessesApi(); } catch { allProcesses.value = []; }
 };
 
 const pageNumbers = computed(() => { const t = metaData.value.totalPages; const c = currentPage.value; const r: number[] = []; for (let i = Math.max(1, c - 2); i <= Math.min(t, c + 2); i++) r.push(i); return r; });
@@ -150,11 +150,12 @@ const onSearchInput = () => { if (searchTimer) clearTimeout(searchTimer); search
 const fetchList = async () => {
   loading.value = true;
   try {
-    const raw = await getDevicePagedListApi({ PaginationParams: { PageNumber: currentPage.value, PageSize: 10 }, Keyword: keyword.value || undefined }) as unknown as Record<string, unknown>;
-    if (raw && raw.metaData) {
-      metaData.value = raw.metaData as PagedMetaData;
-      devices.value = Array.isArray(raw.items) ? raw.items as DeviceListItemDto[] : [];
-    } else if (Array.isArray(raw)) { devices.value = raw as DeviceListItemDto[]; }
+    const response = await getDevicePagedListApi({
+      PaginationParams: { PageNumber: currentPage.value, PageSize: 10 },
+      Keyword: keyword.value || undefined,
+    });
+    metaData.value = response.metaData;
+    devices.value = response.items;
   } catch { devices.value = []; } finally { loading.value = false; }
 };
 const goPage = (page: number) => { currentPage.value = page; fetchList(); };

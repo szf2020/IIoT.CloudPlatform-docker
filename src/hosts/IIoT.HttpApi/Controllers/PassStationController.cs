@@ -1,26 +1,17 @@
-﻿using IIoT.HttpApi.Infrastructure;
+using IIoT.HttpApi.Infrastructure;
 using IIoT.ProductionService.Commands.PassStations;
-using IIoT.ProductionService.Queries.PassStations.Injection;
+using IIoT.ProductionService.Queries.PassStations;
+using IIoT.Services.Common.Contracts.RecordQueries;
 using IIoT.SharedKernel.Paging;
 using Microsoft.AspNetCore.Mvc;
 
 namespace IIoT.HttpApi.Controllers;
 
-/// <summary>
-/// 过站数据科：接收边缘端上报的电芯过站检测数据 + 云端后台追溯查询
-/// </summary>
 [Route("api/v1/[controller]")]
 [ApiController]
-[Tags("过站数据科 - 生产数据接收与查询")]
+[Tags("过站数据 - 生产数据接收与查询")]
 public class PassStationController : ApiControllerBase
 {
-    // ==========================================
-    // 写入接口（边缘端上报）
-    // ==========================================
-
-    /// <summary>
-    /// 批量接收注液工序过站数据
-    /// </summary>
     [HttpPost("injection/batch")]
     public async Task<IActionResult> ReceiveInjectionBatch(
         [FromBody] ReceiveInjectionPassCommand command)
@@ -29,28 +20,18 @@ public class PassStationController : ApiControllerBase
         return result.IsSuccess ? Ok(result.Value) : BadRequest(result.Errors);
     }
 
-    // ==========================================
-    // 查询接口（云端后台追溯）
-    // ==========================================
-
-    /// <summary>
-    /// 追溯查询一：条码 + 工序精确查询
-    /// </summary>
     [HttpGet("injection/by-barcode-process")]
     public async Task<IActionResult> GetByBarcodeAndProcess(
         [FromQuery] Pagination pagination,
         [FromQuery] Guid processId,
         [FromQuery] string barcode)
     {
-        var query = new GetInjectionListQuery(pagination,
-            ProcessId: processId, Barcode: barcode);
+        var query = new GetPassStationListQuery<InjectionPassListItemDto>(
+            pagination, ProcessId: processId, Barcode: barcode);
         var result = await Sender.Send(query);
         return result.IsSuccess ? Ok(result.Value) : BadRequest(result.Errors);
     }
 
-    /// <summary>
-    /// 追溯查询二：时间范围 + 工序精确查询
-    /// </summary>
     [HttpGet("injection/by-time-process")]
     public async Task<IActionResult> GetByTimeAndProcess(
         [FromQuery] Pagination pagination,
@@ -58,31 +39,24 @@ public class PassStationController : ApiControllerBase
         [FromQuery] DateTime startTime,
         [FromQuery] DateTime endTime)
     {
-        var query = new GetInjectionListQuery(pagination,
-            ProcessId: processId,
-            StartTime: startTime, EndTime: endTime);
+        var query = new GetPassStationListQuery<InjectionPassListItemDto>(
+            pagination, ProcessId: processId, StartTime: startTime, EndTime: endTime);
         var result = await Sender.Send(query);
         return result.IsSuccess ? Ok(result.Value) : BadRequest(result.Errors);
     }
 
-    /// <summary>
-    /// 追溯查询三：设备号 + 条码精确查询
-    /// </summary>
     [HttpGet("injection/by-device-barcode")]
     public async Task<IActionResult> GetByDeviceAndBarcode(
         [FromQuery] Pagination pagination,
         [FromQuery] Guid deviceId,
         [FromQuery] string barcode)
     {
-        var query = new GetInjectionListQuery(pagination,
-            DeviceId: deviceId, Barcode: barcode);
+        var query = new GetPassStationListQuery<InjectionPassListItemDto>(
+            pagination, DeviceId: deviceId, Barcode: barcode);
         var result = await Sender.Send(query);
         return result.IsSuccess ? Ok(result.Value) : BadRequest(result.Errors);
     }
 
-    /// <summary>
-    /// 追溯查询四：设备号 + 时间范围精确查询
-    /// </summary>
     [HttpGet("injection/by-device-time")]
     public async Task<IActionResult> GetByDeviceAndTime(
         [FromQuery] Pagination pagination,
@@ -90,33 +64,26 @@ public class PassStationController : ApiControllerBase
         [FromQuery] DateTime startTime,
         [FromQuery] DateTime endTime)
     {
-        var query = new GetInjectionListQuery(pagination,
-            DeviceId: deviceId,
-            StartTime: startTime, EndTime: endTime);
+        var query = new GetPassStationListQuery<InjectionPassListItemDto>(
+            pagination, DeviceId: deviceId, StartTime: startTime, EndTime: endTime);
         var result = await Sender.Send(query);
         return result.IsSuccess ? Ok(result.Value) : BadRequest(result.Errors);
     }
 
-    /// <summary>
-    /// 详情查询：根据 ID 获取单条注液过站数据（含全部字段）
-    /// </summary>
     [HttpGet("injection/{id}")]
     public async Task<IActionResult> GetInjectionDetail([FromRoute] Guid id)
     {
-        var query = new GetInjectionDetailQuery(id);
+        var query = new GetPassStationDetailQuery<InjectionPassDetailDto>(id);
         var result = await Sender.Send(query);
         return result.IsSuccess ? Ok(result.Value) : BadRequest(result.Errors);
     }
 
-    /// <summary>
-    /// 按机台查最近 200 条注液过站数据（无需填时间范围）
-    /// </summary>
     [HttpGet("injection/device/{deviceId}/latest")]
     public async Task<IActionResult> GetInjectionLatest200ByDevice(
         [FromRoute] Guid deviceId,
         [FromQuery] Pagination pagination)
     {
-        var query = new GetInjectionLatest200ByDeviceQuery(deviceId, pagination);
+        var query = new GetPassStationLatest200Query<InjectionPassListItemDto>(deviceId, pagination);
         var result = await Sender.Send(query);
         return result.IsSuccess ? Ok(result.Value) : BadRequest(result.Errors);
     }

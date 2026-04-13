@@ -1,9 +1,7 @@
 namespace IIoT.Services.Common.Events;
 
 /// <summary>
-/// 半小时产能数据接收事件。
-/// HttpApi 接收上位机上报后发布,DataWorker 消费后落库。
-/// 上位机身份已在轮询认证接口换取 DeviceId,后续数据流转全部以 DeviceId 为唯一标识。
+/// 半小时产能接收事件。
 /// </summary>
 public record HourlyCapacityReceivedEvent
 {
@@ -19,7 +17,7 @@ public record HourlyCapacityReceivedEvent
     public int NgCount { get; init; }
 
     /// <summary>
-    /// 产生该产能数据的 PLC 名称(可空,Edge 端不传时为 null)
+    /// 产生该产能数据的 PLC 名称。
     /// </summary>
     public string? PlcName { get; init; }
 }

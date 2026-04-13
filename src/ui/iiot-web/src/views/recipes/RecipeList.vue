@@ -4,7 +4,7 @@
     <div class="page-header">
       <div>
         <h1 class="page-title">配方管理</h1>
-        <p class="page-sub">管理生产工序的通用配方与机台专属特调配方，支持版本管理</p>
+        <p class="page-sub">管理生产设备配方和版本历史，支持按设备查看、升级和删除。</p>
       </div>
       <button class="btn btn-primary" v-permission="'Recipe.Create'" @click="openCreateModal">
         <svg viewBox="0 0 16 16" fill="none"><path d="M8 2v12M2 8h12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
@@ -50,13 +50,13 @@
             <td>
               <div class="recipe-name-cell">
                 <span class="recipe-name">{{ recipe.recipeName }}</span>
-                <span v-if="recipe.deviceId" class="special-badge">特调</span>
+                <span class="special-badge">设备</span>
               </div>
             </td>
             <td><span class="version-tag">{{ recipe.version }}</span></td>
             <td>
-              <span class="type-tag" :class="recipe.deviceId ? 'special' : 'universal'">
-                {{ recipe.deviceId ? '机台专属' : '工序通用' }}
+              <span class="type-tag" :class="isDeviceBoundRecipe(recipe.deviceId) ? 'special' : 'universal'">
+                {{ isDeviceBoundRecipe(recipe.deviceId) ? '设备配方' : '未绑定设备' }}
               </span>
             </td>
             <td>
@@ -65,7 +65,7 @@
               </span>
             </td>
             <td><span class="process-name-chip">{{ processNameMap[recipe.processId] || recipe.processId.substring(0, 8) + '…' }}</span></td>
-            <td><span v-if="recipe.deviceId" class="device-name-chip">{{ deviceNameMap[recipe.deviceId] || recipe.deviceId.substring(0, 8) + '…' }}</span><span v-else class="no-device">—</span></td>
+            <td><span v-if="isDeviceBoundRecipe(recipe.deviceId)" class="device-name-chip">{{ deviceNameMap[recipe.deviceId] || recipe.deviceId.substring(0, 8) + '…' }}</span><span v-else class="no-device">—</span></td>
             <td class="action-cell" @click.stop>
               <button v-if="recipe.status === 'Active'" class="icon-btn edit" title="升级版本" v-permission="'Recipe.Update'" @click="openUpgradeModal(recipe)">
                 <svg viewBox="0 0 16 16" fill="none"><path d="M8 12V4M5 7l3-3 3 3" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -113,9 +113,9 @@
               </div>
             </div>
             <div class="form-field">
-              <label class="form-label">专属机台 <span class="optional">（不选 = 工序通用配方）</span></label>
+              <label class="form-label">归属设备 <span class="required">*</span></label>
               <select class="form-input" v-model="createForm.deviceId">
-                <option value="">通用配方（不绑定机台）</option>
+                <option value="">请选择设备</option>
                 <option v-for="d in allDevices" :key="d.id" :value="d.id">{{ d.deviceName }}</option>
               </select>
             </div>
@@ -175,8 +175,8 @@
               <div class="form-field">
                 <label class="form-label">配方类型</label>
                 <div class="readonly-field">
-                  <span class="type-tag" :class="upgradeTarget?.deviceId ? 'special' : 'universal'">
-                    {{ upgradeTarget?.deviceId ? '机台专属特调' : '工序通用配方' }}
+                  <span class="type-tag" :class="isDeviceBoundRecipe(upgradeTarget?.deviceId) ? 'special' : 'universal'">
+                    {{ isDeviceBoundRecipe(upgradeTarget?.deviceId) ? '设备配方' : '未绑定设备' }}
                   </span>
                 </div>
               </div>
@@ -234,8 +234,8 @@
             <div class="detail-status-banner" :class="detailData.status === 'Active' ? 'active' : 'archived'">
               <span class="status-dot"></span>
               {{ detailData.status === 'Active' ? '配方启用中' : '配方已归档' }}
-              <span class="detail-type-badge" :class="detailData.deviceId ? 'special' : 'universal'">
-                {{ detailData.deviceId ? '特调' : '通用' }}
+              <span class="detail-type-badge" :class="isDeviceBoundRecipe(detailData.deviceId) ? 'special' : 'universal'">
+                {{ isDeviceBoundRecipe(detailData.deviceId) ? '设备配方' : '未绑定设备' }}
               </span>
             </div>
             <div class="detail-section">
@@ -251,8 +251,8 @@
                 <span class="detail-label">归属工序</span>
                 <span class="detail-value">{{ processNameMap[detailData.processId] || detailData.processId }}</span>
               </div>
-              <div v-if="detailData.deviceId" class="detail-row">
-                <span class="detail-label">专属机台</span>
+              <div v-if="isDeviceBoundRecipe(detailData.deviceId)" class="detail-row">
+                <span class="detail-label">归属设备</span>
                 <span class="detail-value">{{ deviceNameMap[detailData.deviceId] || detailData.deviceId }}</span>
               </div>
               <div class="detail-row">
@@ -313,9 +313,20 @@ const submitting = ref(false);
 
 const allProcesses = ref<MfgProcessSelectDto[]>([]);
 const allDevices = ref<DeviceSelectDto[]>([]);
+const EMPTY_GUID = '00000000-0000-0000-0000-000000000000';
+
+const isDeviceBoundRecipe = (deviceId?: string | null) =>
+  Boolean(deviceId && deviceId !== EMPTY_GUID);
+
+const isRecipeDetailDto = (value: unknown): value is RecipeDetailDto => {
+  if (!value || typeof value !== 'object') return false;
+  const candidate = value as Partial<RecipeDetailDto>;
+  return typeof candidate.id === 'string' && typeof candidate.parametersJsonb === 'string';
+};
+
 const fetchSelectData = async () => {
-  try { allProcesses.value = await getAllMfgProcessesApi() as unknown as MfgProcessSelectDto[]; } catch { allProcesses.value = []; }
-  try { allDevices.value = await getAllActiveDevicesApi() as unknown as DeviceSelectDto[]; } catch { allDevices.value = []; }
+  try { allProcesses.value = await getAllMfgProcessesApi(); } catch { allProcesses.value = []; }
+  try { allDevices.value = await getAllActiveDevicesApi(); } catch { allDevices.value = []; }
 };
 
 const processNameMap = computed(() => {
@@ -346,17 +357,13 @@ const onSearchInput = () => {
 const fetchList = async () => {
   loading.value = true;
   try {
-    const raw = await getRecipePagedListApi({
+    const response = await getRecipePagedListApi({
       pagination: { PageNumber: currentPage.value, PageSize: 10 },
       keyword: keyword.value || undefined,
-    }) as unknown as Record<string, unknown>;
+    });
 
-    if (raw && raw.metaData) {
-      metaData.value = raw.metaData as PagedMetaData;
-      recipes.value = Array.isArray(raw.items) ? raw.items as RecipeListItemDto[] : [];
-    } else if (Array.isArray(raw)) {
-      recipes.value = raw as RecipeListItemDto[];
-    }
+    metaData.value = response.metaData;
+    recipes.value = response.items;
   } catch {
     recipes.value = [];
   } finally {
@@ -404,7 +411,10 @@ const openCreateModal = async () => {
 };
 
 const submitCreate = async () => {
-  if (!createForm.recipeName.trim() || !createForm.processId) { alert('配方名称和归属工序为必填项'); return; }
+  if (!createForm.recipeName.trim() || !createForm.processId || !createForm.deviceId) {
+    alert('配方名称、归属工序和归属设备为必填项');
+    return;
+  }
   if (createParams.value.length === 0) { alert('至少添加一个工艺参数'); return; }
   const emptyName = createParams.value.some(p => !p.name.trim());
   if (emptyName) { alert('参数名称不能为空'); return; }
@@ -413,7 +423,7 @@ const submitCreate = async () => {
     await createRecipeApi({
       recipeName: createForm.recipeName,
       processId: createForm.processId,
-      deviceId: createForm.deviceId.trim() || null,
+      deviceId: createForm.deviceId,
       parametersJsonb: paramsToJsonb(createParams.value),
     });
     showCreateModal.value = false;
@@ -437,12 +447,12 @@ const openUpgradeModal = async (recipe: RecipeListItemDto) => {
   upgradeParams.value = [];
   showUpgradeModal.value = true;
   try {
-    const raw = await getRecipeDetailApi(recipe.id) as any;
-    const jsonb = raw?.parametersJsonb || '';
+    const raw = await getRecipeDetailApi(recipe.id);
+    const jsonb = raw.parametersJsonb || '';
     upgradeParams.value = parseParams(jsonb);
-  } catch (e: any) {
-    if (e && e.parametersJsonb) {
-      upgradeParams.value = parseParams(e.parametersJsonb);
+  } catch (error: unknown) {
+    if (isRecipeDetailDto(error)) {
+      upgradeParams.value = parseParams(error.parametersJsonb);
     } else {
       upgradeParams.value = [];
     }
@@ -480,12 +490,10 @@ const openDetailPanel = async (recipe: RecipeListItemDto) => {
   detailLoading.value = true;
   detailData.value = null;
   try {
-    const raw = await getRecipeDetailApi(recipe.id) as any;
-    detailData.value = raw as RecipeDetailDto;
-  } catch (e: any) {
-    // 拦截器 reject 的数据可能就是有效的详情对象
-    if (e && e.id && e.parametersJsonb) {
-      detailData.value = e as RecipeDetailDto;
+    detailData.value = await getRecipeDetailApi(recipe.id);
+  } catch (error: unknown) {
+    if (isRecipeDetailDto(error)) {
+      detailData.value = error;
     } else {
       showDetailPanel.value = false;
     }

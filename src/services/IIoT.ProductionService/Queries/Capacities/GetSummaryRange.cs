@@ -1,14 +1,13 @@
-﻿using IIoT.Services.Common.Contracts;
-using IIoT.Services.Common.Contracts.DapperQueries;
+using IIoT.Services.Common.Contracts;
+using IIoT.Services.Common.Contracts.RecordQueries;
 using IIoT.SharedKernel.Messaging;
 using IIoT.SharedKernel.Result;
 
 namespace IIoT.ProductionService.Queries.Capacities;
 
 /// <summary>
-/// 按日期范围查询每日汇总（月/年查询使用）
-/// 一次请求替代前端循环 N 次，彻底解决年查询 365 次请求问题
-/// plcName 可选，传入时只汇总该 PLC 的数据
+/// 查询指定设备在日期范围内的每日汇总产能。
+/// 传入 plcName 时只汇总对应 PLC 的数据。
 /// </summary>
 public record GetSummaryRangeQuery(
     Guid DeviceId,

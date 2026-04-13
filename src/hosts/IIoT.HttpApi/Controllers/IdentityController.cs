@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace IIoT.HttpApi.Controllers;
 
 /// <summary>
-/// 保安科：身份与安全认证中枢 (负责登录、发牌、底层账号与权限点分配)
+/// 身份与权限接口。
 /// </summary>
 [Route("api/v1/[controller]")]
 [ApiController]
@@ -14,7 +14,7 @@ namespace IIoT.HttpApi.Controllers;
 public class IdentityController : ApiControllerBase
 {
     /// <summary>
-    /// 登录并获取 JWT 令牌
+    /// 登录并获取 JWT。
     /// </summary>
     [HttpPost("login")]
     public async Task<IActionResult> Login([FromBody] LoginUserCommand command)
@@ -24,7 +24,7 @@ public class IdentityController : ApiControllerBase
     }
 
     /// <summary>
-    /// 修改当前登录账号的密码
+    /// 修改当前账号密码。
     /// </summary>
     [HttpPut("password")]
     public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordCommand command)
@@ -34,7 +34,7 @@ public class IdentityController : ApiControllerBase
     }
 
     /// <summary>
-    /// 管理员强制重置指定员工的密码 (不需要旧密码)
+    /// 重置指定员工密码。
     /// </summary>
     [HttpPut("password/reset")]
     public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordCommand command)
@@ -44,7 +44,7 @@ public class IdentityController : ApiControllerBase
     }
 
     /// <summary>
-    /// 获取全系统底层角色策略列表
+    /// 获取角色列表。
     /// </summary>
     [HttpGet("roles")]
     public async Task<IActionResult> GetAllRoles()
@@ -54,7 +54,7 @@ public class IdentityController : ApiControllerBase
     }
 
     /// <summary>
-    /// 定义全新的系统角色
+    /// 创建角色。
     /// </summary>
     [HttpPost("roles")]
     public async Task<IActionResult> DefineRolePolicy([FromBody] DefineRolePolicyCommand command)
@@ -64,7 +64,7 @@ public class IdentityController : ApiControllerBase
     }
 
     /// <summary>
-    /// 获取指定角色当前绑定的全部权限点
+    /// 获取角色权限点。
     /// </summary>
     [HttpGet("roles/{roleName}/permissions")]
     public async Task<IActionResult> GetRolePermissions([FromRoute] string roleName)
@@ -75,7 +75,7 @@ public class IdentityController : ApiControllerBase
     }
 
     /// <summary>
-    /// 更新指定角色的行为权限点 (Claims 组)
+    /// 更新角色权限点。
     /// </summary>
     [HttpPut("roles/{roleName}/permissions")]
     public async Task<IActionResult> UpdateRolePermissions(
@@ -88,7 +88,7 @@ public class IdentityController : ApiControllerBase
     }
 
     /// <summary>
-    /// 获取系统全部已定义的权限点 (动态聚合，按模块分组)
+    /// 获取系统已定义的权限点。
     /// </summary>
     [HttpGet("permissions/all")]
     public async Task<IActionResult> GetAllPermissions()
@@ -98,7 +98,7 @@ public class IdentityController : ApiControllerBase
     }
 
     /// <summary>
-    /// 获取指定员工的个人特批权限点列表 (不含角色继承的权限)
+    /// 获取员工个人权限点。
     /// </summary>
     [HttpGet("users/{userId}/permissions")]
     public async Task<IActionResult> GetUserPersonalPermissions([FromRoute] Guid userId)
@@ -109,7 +109,7 @@ public class IdentityController : ApiControllerBase
     }
 
     /// <summary>
-    /// 管理员为指定员工设置个人特批权限点 (全量同步，与角色权限是并集关系)
+    /// 更新员工个人权限点。
     /// </summary>
     [HttpPut("users/{userId}/permissions")]
     public async Task<IActionResult> UpdateUserPermissions(
@@ -121,7 +121,7 @@ public class IdentityController : ApiControllerBase
     }
 
     /// <summary>
-    /// WPF 边缘端专用登录（含设备绑定校验）
+    /// 边缘端登录。
     /// </summary>
     [HttpPost("device-login")]
     public async Task<IActionResult> DeviceLogin([FromBody] DeviceLoginCommand command)

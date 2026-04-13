@@ -7,22 +7,15 @@ using Microsoft.AspNetCore.Mvc;
 namespace IIoT.HttpApi.Controllers;
 
 /// <summary>
-/// 产能模块：接收 Edge 端产能上传 + 提供产能查询
-/// 统一使用 deviceId（Guid）作为唯一标识
-/// plcName 可选：区分同一上位机下多台 PLC 的产能数据，不传则返回全部（向后兼容）
+/// 产能接口。
 /// </summary>
 [Route("api/v1/[controller]")]
 [ApiController]
 [Tags("产能 - 产能上传与查询")]
 public class CapacityController : ApiControllerBase
 {
-    // ==========================================
-    // 写入接口（Edge 端上报）
-    // ==========================================
-
     /// <summary>
-    /// 接收半小时产能上报（实时同步 + 离线补传统一入口）
-    /// Body 中 plcName 字段可选，区分同一上位机下多台 PLC
+    /// 接收半小时产能上报。
     /// </summary>
     [HttpPost("hourly")]
     public async Task<IActionResult> ReceiveHourly([FromBody] ReceiveHourlyCapacityCommand command)
@@ -31,14 +24,8 @@ public class CapacityController : ApiControllerBase
         return result.IsSuccess ? Ok(result.Value) : BadRequest(result.Errors);
     }
 
-    // ==========================================
-    // 查询接口（统一用 deviceId，plcName 可选）
-    // ==========================================
-
     /// <summary>
-    /// 按日查询半小时明细（日查询优先调用）
-    /// GET /api/v1/Capacity/hourly?deviceId=xxx&amp;date=2026-04-01
-    /// GET /api/v1/Capacity/hourly?deviceId=xxx&amp;date=2026-04-01&amp;plcName=PLC_01
+    /// 查询半小时明细。
     /// </summary>
     [HttpGet("hourly")]
     public async Task<IActionResult> GetHourly(
@@ -52,10 +39,7 @@ public class CapacityController : ApiControllerBase
     }
 
     /// <summary>
-    /// 按日查询汇总（日查询兜底）
-    /// GET /api/v1/Capacity/summary?deviceId=xxx&amp;date=2026-04-01
-    /// GET /api/v1/Capacity/summary?deviceId=xxx&amp;date=2026-04-01&amp;plcName=PLC_01
-    /// 无数据返回 204
+    /// 查询日汇总。
     /// </summary>
     [HttpGet("summary")]
     public async Task<IActionResult> GetSummary(
@@ -73,9 +57,7 @@ public class CapacityController : ApiControllerBase
     }
 
     /// <summary>
-    /// 按日期范围查询每日汇总（月/年查询使用，一次请求搞定）
-    /// GET /api/v1/Capacity/summary/range?deviceId=xxx&amp;startDate=2026-03-01&amp;endDate=2026-03-31
-    /// GET /api/v1/Capacity/summary/range?deviceId=xxx&amp;startDate=2026-03-01&amp;endDate=2026-03-31&amp;plcName=PLC_01
+    /// 查询日期范围汇总。
     /// </summary>
     [HttpGet("summary/range")]
     public async Task<IActionResult> GetSummaryRange(
@@ -89,12 +71,8 @@ public class CapacityController : ApiControllerBase
         return result.IsSuccess ? Ok(result.Value) : BadRequest(result.Errors);
     }
 
-    // ==========================================
-    // 云端后台管理
-    // ==========================================
-
     /// <summary>
-    /// 所有机台产能分页查询（从 hourly_capacity 聚合为日粒度）
+    /// 查询日产能分页列表。
     /// </summary>
     [HttpGet("daily")]
     public async Task<IActionResult> GetDailyPaged(
