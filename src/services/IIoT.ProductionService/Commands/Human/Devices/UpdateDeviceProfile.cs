@@ -1,10 +1,9 @@
-using IIoT.Core.Employee.Aggregates.Employees;
-using IIoT.Core.Employee.Specifications;
 using IIoT.Core.Production.Aggregates.Devices;
 using IIoT.Core.Production.Specifications.Devices;
 using IIoT.Services.Common.Attributes;
 using IIoT.Services.Common.Caching;
 using IIoT.Services.Common.Contracts;
+using IIoT.Services.Common.Contracts.Authorization;
 using IIoT.SharedKernel.Messaging;
 using IIoT.SharedKernel.Repository;
 using IIoT.SharedKernel.Result;
@@ -19,10 +18,10 @@ public record UpdateDeviceProfileCommand(
 
 public class UpdateDeviceProfileHandler(
     ICurrentUser currentUser,
-    IReadRepository<Employee> employeeRepository,
     IRepository<Device> deviceRepository,
-    ICacheService cacheService
-) : ICommandHandler<UpdateDeviceProfileCommand, Result<bool>>
+    ICacheService cacheService,
+    IDevicePermissionService devicePermissionService)
+    : ICommandHandler<UpdateDeviceProfileCommand, Result<bool>>
 {
     public async Task<Result<bool>> Handle(
         UpdateDeviceProfileCommand request,
@@ -45,16 +44,14 @@ public class UpdateDeviceProfileHandler(
             if (!Guid.TryParse(currentUser.Id, out var userId))
                 return Result.Failure("用户凭证异常");
 
-            var employee = await employeeRepository.GetSingleOrDefaultAsync(
-                new EmployeeWithAccessesSpec(userId),
+            var accessibleDeviceIds = await devicePermissionService.GetAccessibleDeviceIdsAsync(
+                userId,
+                isAdmin: false,
                 cancellationToken);
-
-            if (employee is null)
-                return Result.Failure("系统中未找到您的员工档案");
-
-            var hasDeviceAccess = employee.DeviceAccesses.Any(d => d.DeviceId == device.Id);
-            if (!hasDeviceAccess)
-                return Result.Failure("越权:您没有该设备的管辖权");
+            if (accessibleDeviceIds is null || !accessibleDeviceIds.Contains(device.Id))
+            {
+                return Result.Failure("越权:未授权访问该设备");
+            }
         }
 
         device.Rename(deviceName);

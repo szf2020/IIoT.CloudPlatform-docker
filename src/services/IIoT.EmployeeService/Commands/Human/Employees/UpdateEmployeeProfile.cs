@@ -1,5 +1,5 @@
-using IIoT.Core.Employee.Aggregates.Employees;
-using IIoT.Core.Employee.Specifications;
+using IIoT.Core.Employees.Aggregates.Employees;
+using IIoT.Core.Employees.Specifications;
 using IIoT.Services.Common.Attributes;
 using IIoT.Services.Common.Contracts;
 using IIoT.SharedKernel.Messaging;
@@ -18,7 +18,8 @@ public record UpdateEmployeeProfileCommand(
 
 public class UpdateEmployeeProfileHandler(
     IRepository<Employee> employeeRepository,
-    IIdentityAccountStore identityAccountStore)
+    IIdentityAccountStore identityAccountStore,
+    IUnitOfWork unitOfWork)
     : ICommandHandler<UpdateEmployeeProfileCommand, Result<bool>>
 {
     public async Task<Result<bool>> Handle(
@@ -31,39 +32,51 @@ public class UpdateEmployeeProfileHandler(
             return Result.Failure("员工姓名不能为空");
         }
 
-        var employee = await employeeRepository.GetSingleOrDefaultAsync(
-            new EmployeeWithAccessesSpec(request.EmployeeId),
-            cancellationToken);
-
-        if (employee is null)
+        try
         {
-            return Result.Failure("未找到该员工的业务档案");
+            await unitOfWork.BeginTransactionAsync(cancellationToken);
+
+            var employee = await employeeRepository.GetSingleOrDefaultAsync(
+                new EmployeeWithAccessesSpec(request.EmployeeId),
+                cancellationToken);
+
+            if (employee is null)
+            {
+                await unitOfWork.RollbackAsync(cancellationToken);
+                return Result.Failure("未找到该员工");
+            }
+
+            employee.Rename(employee.EmployeeNo, realName);
+            if (request.IsActive)
+            {
+                employee.Activate();
+            }
+            else
+            {
+                employee.Deactivate();
+            }
+
+            employeeRepository.Update(employee);
+            await employeeRepository.SaveChangesAsync(cancellationToken);
+
+            var identityResult = await identityAccountStore.SetEnabledAsync(
+                request.EmployeeId,
+                request.IsActive,
+                cancellationToken);
+
+            if (!identityResult.IsSuccess)
+            {
+                await unitOfWork.RollbackAsync(cancellationToken);
+                return Result.Failure(identityResult.Errors?.ToArray() ?? ["账号状态同步失败"]);
+            }
+
+            await unitOfWork.CommitAsync(cancellationToken);
+            return Result.Success(true);
         }
-
-        employee.Rename(employee.EmployeeNo, realName);
-
-        if (request.IsActive)
+        catch (Exception ex)
         {
-            employee.Activate();
+            await unitOfWork.RollbackAsync(cancellationToken);
+            return Result.Failure($"员工信息更新失败: {ex.Message}");
         }
-        else
-        {
-            employee.Deactivate();
-        }
-
-        employeeRepository.Update(employee);
-        await employeeRepository.SaveChangesAsync(cancellationToken);
-
-        var identityResult = await identityAccountStore.SetEnabledAsync(
-            request.EmployeeId,
-            request.IsActive,
-            cancellationToken);
-
-        if (!identityResult.IsSuccess)
-        {
-            return Result.Failure(identityResult.Errors?.ToArray() ?? ["员工身份账号状态同步失败"]);
-        }
-
-        return Result.Success(true);
     }
 }

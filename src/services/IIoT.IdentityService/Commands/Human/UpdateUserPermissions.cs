@@ -1,4 +1,5 @@
 using IIoT.Services.Common.Attributes;
+using IIoT.Services.Common.Caching;
 using IIoT.Services.Common.Contracts;
 using IIoT.SharedKernel.Messaging;
 using IIoT.SharedKernel.Result;
@@ -30,7 +31,7 @@ public class UpdateUserPermissionsHandler(
         if (result.IsSuccess && result.Value)
         {
             // 缓存双杀：个人权限变更后，爆破该用户的权限缓存，下次登录重新查库
-            await cacheService.RemoveAsync($"iiot:permissions:v1:user:{request.UserId}", cancellationToken);
+            await cacheService.RemoveAsync(CacheKeys.PermissionByUser(request.UserId), cancellationToken);
         }
 
         return result;

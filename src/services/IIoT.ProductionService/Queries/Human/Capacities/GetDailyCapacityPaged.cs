@@ -1,18 +1,16 @@
-using IIoT.Core.Employee.Aggregates.Employees;
-using IIoT.Core.Employee.Specifications;
 using IIoT.Services.Common.Attributes;
 using IIoT.Services.Common.Caching;
 using IIoT.Services.Common.Contracts;
+using IIoT.Services.Common.Contracts.Authorization;
 using IIoT.Services.Common.Contracts.RecordQueries;
 using IIoT.SharedKernel.Messaging;
 using IIoT.SharedKernel.Paging;
-using IIoT.SharedKernel.Repository;
 using IIoT.SharedKernel.Result;
 
 namespace IIoT.ProductionService.Queries.Capacities;
 
 /// <summary>
-/// 机台日产能分页查询。
+/// 设备日报能力汇总列表
 /// </summary>
 [AuthorizeRequirement("Device.Read")]
 public record GetDailyCapacityPagedQuery(
@@ -23,7 +21,7 @@ public record GetDailyCapacityPagedQuery(
 
 public class GetDailyCapacityPagedHandler(
     ICurrentUser currentUser,
-    IReadRepository<Employee> employeeRepository,
+    IDevicePermissionService devicePermissionService,
     ICapacityQueryService queryService,
     ICacheService cacheService
 ) : IQueryHandler<GetDailyCapacityPagedQuery, Result<PagedList<DailyCapacityPagedItemDto>>>
@@ -39,22 +37,17 @@ public class GetDailyCapacityPagedHandler(
             if (!Guid.TryParse(currentUser.Id, out var userId))
                 return Result.Failure("用户凭证异常");
 
-            var employee = await employeeRepository.GetSingleOrDefaultAsync(
-                new EmployeeWithAccessesSpec(userId),
+            var accessibleDeviceIds = await devicePermissionService.GetAccessibleDeviceIdsAsync(
+                userId,
+                isAdmin: false,
                 cancellationToken);
+            allowedDeviceIds = accessibleDeviceIds?.ToList();
 
-            if (employee == null)
-                return Result.Failure("系统中未找到您的员工档案");
-
-            allowedDeviceIds = employee.DeviceAccesses
-                .Select(d => d.DeviceId)
-                .ToList();
-
-            if (allowedDeviceIds.Count == 0)
+            if (allowedDeviceIds is null || allowedDeviceIds.Count == 0)
                 return Result.Success(new PagedList<DailyCapacityPagedItemDto>([], 0, request.PaginationParams));
 
             if (request.DeviceId.HasValue && !allowedDeviceIds.Contains(request.DeviceId.Value))
-                return Result.Failure("无权查看该设备产能");
+                return Result.Failure("无权查看该设备的日报报表");
         }
 
         var cacheKey = CacheKeys.CapacityPaged(

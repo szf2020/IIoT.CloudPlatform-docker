@@ -1,14 +1,27 @@
 using IIoT.SharedKernel.Result;
 
-namespace IIoT.Services.Common.Contracts;
+namespace IIoT.Services.Common.Contracts.Identity;
 
 public interface IIdentityPasswordService
 {
-    Task<Result<bool>> SetPasswordAsync(Guid userId, string password, CancellationToken cancellationToken = default);
+    Task<Result<bool>> CheckPasswordAsync(
+        Guid accountId,
+        string password,
+        CancellationToken cancellationToken = default);
 
-    Task<Result<bool>> CheckPasswordAsync(Guid userId, string password, CancellationToken cancellationToken = default);
+    Task<Result<bool>> SetPasswordAsync(
+        Guid accountId,
+        string newPassword,
+        CancellationToken cancellationToken = default);
 
-    Task<Result> ChangePasswordAsync(Guid userId, string currentPassword, string newPassword, CancellationToken cancellationToken = default);
+    Task<Result> ChangePasswordAsync(
+        Guid accountId,
+        string currentPassword,
+        string newPassword,
+        CancellationToken cancellationToken = default);
 
-    Task<Result<bool>> ResetPasswordAsync(Guid userId, string newPassword, CancellationToken cancellationToken = default);
+    Task<Result<bool>> ResetPasswordAsync(
+        Guid accountId,
+        string newPassword,
+        CancellationToken cancellationToken = default);
 }

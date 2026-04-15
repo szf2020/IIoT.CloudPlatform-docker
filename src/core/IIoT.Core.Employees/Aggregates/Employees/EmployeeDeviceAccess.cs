@@ -1,6 +1,6 @@
 ﻿using IIoT.SharedKernel.Domain;
 
-namespace IIoT.Core.Employee.Aggregates.Employees;
+namespace IIoT.Core.Employees.Aggregates.Employees;
 
 /// <summary>
 /// 映射关联实体：员工与具体物理设备的权限绑定关系表

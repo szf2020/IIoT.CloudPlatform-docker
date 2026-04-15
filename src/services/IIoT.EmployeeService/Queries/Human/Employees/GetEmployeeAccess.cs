@@ -1,5 +1,5 @@
-﻿using IIoT.Core.Employee.Aggregates.Employees;
-using IIoT.Core.Employee.Specifications;
+﻿using IIoT.Core.Employees.Aggregates.Employees;
+using IIoT.Core.Employees.Specifications;
 using IIoT.Services.Common.Attributes;
 using IIoT.Services.Common.Contracts;
 using IIoT.SharedKernel.Messaging;
@@ -37,3 +37,4 @@ public class GetEmployeeAccessHandler(
         return Result.Success(dto);
     }
 }
+

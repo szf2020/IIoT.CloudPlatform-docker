@@ -1,9 +1,11 @@
-﻿namespace IIoT.Services.Common.Contracts;
+namespace IIoT.Services.Common.Contracts.Authorization;
 
 public interface IPermissionProvider
 {
     /// <summary>
     /// 获取用户的有效权限集合。
     /// </summary>
-    Task<IList<string>> GetPermissionsAsync(Guid userId, CancellationToken cancellationToken = default);
+    Task<IList<string>> GetPermissionsAsync(
+        Guid userId,
+        CancellationToken cancellationToken = default);
 }

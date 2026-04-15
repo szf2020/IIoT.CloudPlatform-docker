@@ -1,9 +1,6 @@
-using IIoT.Core.Employee.Aggregates.Employees;
-using IIoT.Core.Employee.Specifications;
 using IIoT.Services.Common.Caching;
 using IIoT.Services.Common.Contracts;
 using IIoT.SharedKernel.Messaging;
-using IIoT.SharedKernel.Repository;
 using IIoT.SharedKernel.Result;
 
 namespace IIoT.IdentityService.Commands;
@@ -20,7 +17,7 @@ public class EdgeOperatorLoginHandler(
     IPermissionProvider permissionProvider,
     ICacheService cacheService,
     IJwtTokenGenerator jwtTokenGenerator,
-    IReadRepository<Employee> employeeRepository)
+    IEmployeeLookupService employeeLookupService)
     : ICommandHandler<EdgeOperatorLoginCommand, Result<string>>
 {
     public async Task<Result<string>> Handle(
@@ -33,12 +30,12 @@ public class EdgeOperatorLoginHandler(
 
         if (account is null)
         {
-            return Result.Failure("工号不存在或密码错误");
+            return Result.Failure("账号不存在或密码错误");
         }
 
         if (!account.IsEnabled)
         {
-            return Result.Failure("账号已停用，请联系管理员");
+            return Result.Failure("账号已冻结，请联系管理员");
         }
 
         var checkResult = await identityPasswordService.CheckPasswordAsync(
@@ -48,7 +45,7 @@ public class EdgeOperatorLoginHandler(
 
         if (!checkResult.IsSuccess || !checkResult.Value)
         {
-            return Result.Failure("工号不存在或密码错误");
+            return Result.Failure("账号不存在或密码错误");
         }
 
         var roles = await identityAccountStore.GetRolesAsync(account.Id, cancellationToken);
@@ -56,10 +53,7 @@ public class EdgeOperatorLoginHandler(
 
         if (!isAdmin)
         {
-            var employee = await employeeRepository.GetSingleOrDefaultAsync(
-                new EmployeeWithAccessesSpec(account.Id),
-                cancellationToken);
-
+            var employee = await employeeLookupService.GetByIdAsync(account.Id, cancellationToken);
             if (employee is null)
             {
                 return Result.Failure("员工档案不存在");
@@ -67,13 +61,13 @@ public class EdgeOperatorLoginHandler(
 
             if (!employee.IsActive)
             {
-                return Result.Failure("员工已停用，无法登录");
+                return Result.Failure("账号已冻结，无法登录");
             }
 
-            var hasDeviceAccess = employee.DeviceAccesses.Any(d => d.DeviceId == request.DeviceId);
+            var hasDeviceAccess = employee.DeviceIds.Contains(request.DeviceId);
             if (!hasDeviceAccess)
             {
-                return Result.Failure("您无权操作此设备，请联系管理员绑定设备权限");
+                return Result.Failure("无设备权限，请联系管理员授权");
             }
         }
 

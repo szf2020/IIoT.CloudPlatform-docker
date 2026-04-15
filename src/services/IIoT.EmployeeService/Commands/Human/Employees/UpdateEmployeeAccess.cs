@@ -1,5 +1,6 @@
-﻿using IIoT.Core.Employee.Aggregates.Employees;
-using IIoT.Core.Employee.Specifications;
+using IIoT.Core.Employees.Aggregates.Employees;
+using IIoT.Core.Employees.Specifications;
+using IIoT.Services.Common.Caching;
 using IIoT.Services.Common.Attributes;
 using IIoT.Services.Common.Contracts;
 using IIoT.SharedKernel.Messaging;
@@ -19,7 +20,8 @@ public record UpdateEmployeeAccessCommand(
 ) : IHumanCommand<Result<bool>>;
 
 public class UpdateEmployeeAccessHandler(
-    IRepository<Employee> employeeRepository
+    IRepository<Employee> employeeRepository,
+    ICacheService cacheService
 ) : ICommandHandler<UpdateEmployeeAccessCommand, Result<bool>>
 {
     public async Task<Result<bool>> Handle(
@@ -37,12 +39,18 @@ public class UpdateEmployeeAccessHandler(
         var existingDeviceIds = employee.DeviceAccesses.Select(d => d.DeviceId).ToList();
         var devicesToRemove = existingDeviceIds.Except(request.DeviceIds).ToList();
         var devicesToAdd = request.DeviceIds.Except(existingDeviceIds).ToList();
+        var shouldClearCache = devicesToRemove.Count > 0 || devicesToAdd.Count > 0;
 
         foreach (var id in devicesToRemove) employee.RemoveDeviceAccess(id);
         foreach (var id in devicesToAdd) employee.AddDeviceAccess(id);
 
         employeeRepository.Update(employee);
         await employeeRepository.SaveChangesAsync(cancellationToken);
+
+        if (shouldClearCache)
+        {
+            await cacheService.RemoveAsync(CacheKeys.DeviceAccessesByUser(request.EmployeeId), cancellationToken);
+        }
 
         return Result.Success(true);
     }

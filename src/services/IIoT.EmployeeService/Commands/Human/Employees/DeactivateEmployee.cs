@@ -1,5 +1,6 @@
-using IIoT.Core.Employee.Aggregates.Employees;
-using IIoT.Core.Employee.Specifications;
+using IIoT.Core.Employees.Aggregates.Employees;
+using IIoT.Core.Employees.Specifications;
+using IIoT.Services.Common.Caching;
 using IIoT.Services.Common.Attributes;
 using IIoT.Services.Common.Contracts;
 using IIoT.SharedKernel.Messaging;
@@ -14,42 +15,55 @@ public record DeactivateEmployeeCommand(Guid EmployeeId) : IHumanCommand<Result>
 
 public class DeactivateEmployeeHandler(
     IRepository<Employee> employeeRepository,
-    IIdentityAccountStore identityAccountStore)
+    IIdentityAccountStore identityAccountStore,
+    IUnitOfWork unitOfWork,
+    ICacheService cacheService)
     : ICommandHandler<DeactivateEmployeeCommand, Result>
 {
     public async Task<Result> Handle(
         DeactivateEmployeeCommand request,
         CancellationToken cancellationToken)
     {
-        var employee = await employeeRepository.GetSingleOrDefaultAsync(
-            new EmployeeWithAccessesSpec(request.EmployeeId),
-            cancellationToken);
-
-        if (employee is null)
+        try
         {
-            return Result.Failure("未找到目标员工档案");
-        }
+            await unitOfWork.BeginTransactionAsync(cancellationToken);
 
-        if (!employee.IsActive)
-        {
+            var employee = await employeeRepository.GetSingleOrDefaultAsync(
+                new EmployeeWithAccessesSpec(request.EmployeeId),
+                cancellationToken);
+
+            if (employee is null)
+            {
+                await unitOfWork.RollbackAsync(cancellationToken);
+                return Result.Failure("未找到目标员工档案");
+            }
+
+            if (employee.IsActive)
+            {
+                employee.Deactivate();
+                employeeRepository.Update(employee);
+                await employeeRepository.SaveChangesAsync(cancellationToken);
+            }
+
+            var identityResult = await identityAccountStore.SetEnabledAsync(
+                request.EmployeeId,
+                false,
+                cancellationToken);
+
+            if (!identityResult.IsSuccess)
+            {
+                await unitOfWork.RollbackAsync(cancellationToken);
+                return Result.Failure(identityResult.Errors?.ToArray() ?? ["员工身份账号停用失败"]);
+            }
+
+            await cacheService.RemoveAsync(CacheKeys.DeviceAccessesByUser(request.EmployeeId), cancellationToken);
+            await unitOfWork.CommitAsync(cancellationToken);
             return Result.Success();
         }
-
-        employee.Deactivate();
-
-        employeeRepository.Update(employee);
-        await employeeRepository.SaveChangesAsync(cancellationToken);
-
-        var identityResult = await identityAccountStore.SetEnabledAsync(
-            request.EmployeeId,
-            false,
-            cancellationToken);
-
-        if (!identityResult.IsSuccess)
+        catch (Exception ex)
         {
-            return Result.Failure(identityResult.Errors?.ToArray() ?? ["员工身份账号停用失败"]);
+            await unitOfWork.RollbackAsync(cancellationToken);
+            return Result.Failure($"员工停用失败: {ex.Message}");
         }
-
-        return Result.Success();
     }
 }

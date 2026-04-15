@@ -1,18 +1,15 @@
-using IIoT.Core.Employee.Aggregates.Employees;
-using IIoT.Core.Employee.Specifications;
 using IIoT.Services.Common.Attributes;
 using IIoT.Services.Common.Caching;
 using IIoT.Services.Common.Contracts;
+using IIoT.Services.Common.Contracts.Authorization;
 using IIoT.Services.Common.Contracts.RecordQueries;
 using IIoT.SharedKernel.Messaging;
-using IIoT.SharedKernel.Repository;
 using IIoT.SharedKernel.Result;
 
 namespace IIoT.ProductionService.Queries.Capacities;
 
 /// <summary>
-/// 查询指定设备在某天的小时产能明细。
-/// 传入 plcName 时只返回对应 PLC 的数据。
+/// 查询指定设备某日的小时产能明细
 /// </summary>
 [AuthorizeRequirement("Device.Read")]
 public record GetHourlyByDeviceIdQuery(
@@ -23,7 +20,7 @@ public record GetHourlyByDeviceIdQuery(
 
 public class GetHourlyByDeviceIdHandler(
     ICurrentUser currentUser,
-    IReadRepository<Employee> employeeRepository,
+    IDevicePermissionService devicePermissionService,
     ICapacityQueryService queryService,
     ICacheService cacheService
 ) : IQueryHandler<GetHourlyByDeviceIdQuery, Result<List<HourlyCapacityDto>>>
@@ -37,15 +34,12 @@ public class GetHourlyByDeviceIdHandler(
             if (!Guid.TryParse(currentUser.Id, out var userId))
                 return Result.Failure("用户凭证异常");
 
-            var employee = await employeeRepository.GetSingleOrDefaultAsync(
-                new EmployeeWithAccessesSpec(userId),
+            var accessibleDeviceIds = await devicePermissionService.GetAccessibleDeviceIdsAsync(
+                userId,
+                isAdmin: false,
                 cancellationToken);
-
-            if (employee == null)
-                return Result.Failure("系统中未找到您的员工档案");
-
-            if (!employee.DeviceAccesses.Any(d => d.DeviceId == request.DeviceId))
-                return Result.Failure("无权查看该设备产能");
+            if (accessibleDeviceIds is null || !accessibleDeviceIds.Contains(request.DeviceId))
+                return Result.Failure("无权查看该设备的小时产能");
         }
 
         var cacheKey = CacheKeys.CapacityHourly(request.DeviceId, request.Date, request.PlcName);

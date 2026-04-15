@@ -1,7 +1,7 @@
-namespace IIoT.Services.Common.Contracts;
+namespace IIoT.Services.Common.Contracts.Identity;
 
 public record IdentityAccountDto(
     Guid Id,
-    string EmployeeNo,
+    string UserName,
     bool IsEnabled,
     IList<string> Roles);

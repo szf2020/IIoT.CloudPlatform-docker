@@ -2,6 +2,7 @@ using IIoT.Core.MasterData.Aggregates.MfgProcesses;
 using IIoT.Services.Common.Attributes;
 using IIoT.Services.Common.Caching;
 using IIoT.Services.Common.Contracts;
+using IIoT.Services.Common.Contracts.RecordQueries;
 using IIoT.SharedKernel.Messaging;
 using IIoT.SharedKernel.Repository;
 using IIoT.SharedKernel.Result;
@@ -17,7 +18,7 @@ public record CreateProcessCommand(
 
 public class CreateProcessHandler(
     IRepository<MfgProcess> processRepository,
-    IDataQueryService dataQueryService,
+    IProcessReadQueryService processReadQueryService,
     ICacheService cacheService
 ) : ICommandHandler<CreateProcessCommand, Result<Guid>>
 {
@@ -38,8 +39,9 @@ public class CreateProcessHandler(
             return Result.Failure("工序名称不能为空");
         }
 
-        var codeExists = await dataQueryService.AnyAsync(
-            dataQueryService.MfgProcesses.Where(p => p.ProcessCode == code));
+        var codeExists = await processReadQueryService.CodeExistsAsync(
+            code,
+            cancellationToken: cancellationToken);
 
         if (codeExists)
         {

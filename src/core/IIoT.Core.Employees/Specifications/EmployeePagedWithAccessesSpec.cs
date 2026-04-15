@@ -1,7 +1,7 @@
-using IIoT.Core.Employee.Aggregates.Employees;
+﻿using IIoT.Core.Employees.Aggregates.Employees;
 using IIoT.SharedKernel.Specification;
 
-namespace IIoT.Core.Employee.Specifications;
+namespace IIoT.Core.Employees.Specifications;
 
 /// <summary>
 /// 分页查询规约： Include 机台管辖权导航属性

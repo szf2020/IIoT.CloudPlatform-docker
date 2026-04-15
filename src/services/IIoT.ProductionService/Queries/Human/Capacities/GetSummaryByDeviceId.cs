@@ -1,18 +1,15 @@
-using IIoT.Core.Employee.Aggregates.Employees;
-using IIoT.Core.Employee.Specifications;
 using IIoT.Services.Common.Attributes;
 using IIoT.Services.Common.Caching;
 using IIoT.Services.Common.Contracts;
+using IIoT.Services.Common.Contracts.Authorization;
 using IIoT.Services.Common.Contracts.RecordQueries;
 using IIoT.SharedKernel.Messaging;
-using IIoT.SharedKernel.Repository;
 using IIoT.SharedKernel.Result;
 
 namespace IIoT.ProductionService.Queries.Capacities;
 
 /// <summary>
-/// 查询指定设备在某天的汇总产能。
-/// 传入 plcName 时只汇总对应 PLC 的数据。
+/// 查询指定设备每日汇总
 /// </summary>
 [AuthorizeRequirement("Device.Read")]
 public record GetSummaryByDeviceIdQuery(
@@ -23,7 +20,7 @@ public record GetSummaryByDeviceIdQuery(
 
 public class GetSummaryByDeviceIdHandler(
     ICurrentUser currentUser,
-    IReadRepository<Employee> employeeRepository,
+    IDevicePermissionService devicePermissionService,
     ICapacityQueryService queryService,
     ICacheService cacheService
 ) : IQueryHandler<GetSummaryByDeviceIdQuery, Result<DailySummaryDto?>>
@@ -37,15 +34,12 @@ public class GetSummaryByDeviceIdHandler(
             if (!Guid.TryParse(currentUser.Id, out var userId))
                 return Result.Failure("用户凭证异常");
 
-            var employee = await employeeRepository.GetSingleOrDefaultAsync(
-                new EmployeeWithAccessesSpec(userId),
+            var accessibleDeviceIds = await devicePermissionService.GetAccessibleDeviceIdsAsync(
+                userId,
+                isAdmin: false,
                 cancellationToken);
-
-            if (employee == null)
-                return Result.Failure("系统中未找到您的员工档案");
-
-            if (!employee.DeviceAccesses.Any(d => d.DeviceId == request.DeviceId))
-                return Result.Failure("无权查看该设备产能");
+            if (accessibleDeviceIds is null || !accessibleDeviceIds.Contains(request.DeviceId))
+                return Result.Failure("无权查看该设备的汇总报表");
         }
 
         var cacheKey = CacheKeys.CapacitySummary(request.DeviceId, request.Date, request.PlcName);

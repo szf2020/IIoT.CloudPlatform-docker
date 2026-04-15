@@ -1,7 +1,7 @@
-﻿using IIoT.Core.Employee.Aggregates.Employees;
+﻿using IIoT.Core.Employees.Aggregates.Employees;
 using IIoT.SharedKernel.Specification;
 
-namespace IIoT.Core.Employee.Specifications;
+namespace IIoT.Core.Employees.Specifications;
 
 /// <summary>
 /// 专用查询规约：查询员工，并联级加载其名下所有的机台管辖权

@@ -1,6 +1,6 @@
-﻿using IIoT.SharedKernel.Result;
+using IIoT.SharedKernel.Result;
 
-namespace IIoT.Services.Common.Contracts;
+namespace IIoT.Services.Common.Contracts.Authorization;
 
 public interface IRolePolicyService
 {
@@ -17,7 +17,7 @@ public interface IRolePolicyService
     Task<Result<bool>> UpdateUserPersonalPermissionsAsync(Guid userId, List<string> permissions);
 
     /// <summary>
-    /// 获取指定用户的个人特批权限点列表 (不含角色继承的权限)
+    /// 获取指定用户的个人特批权限点列表（不含角色继承的权限）。
     /// </summary>
     Task<List<string>> GetUserPersonalPermissionsAsync(Guid userId);
 }

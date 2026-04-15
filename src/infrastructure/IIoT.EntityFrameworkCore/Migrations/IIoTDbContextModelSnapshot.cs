@@ -23,7 +23,7 @@ namespace IIoT.EntityFrameworkCore.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
-            modelBuilder.Entity("IIoT.Core.Employee.Aggregates.Employees.Employee", b =>
+            modelBuilder.Entity("IIoT.Core.Employees.Aggregates.Employees.Employee", b =>
                 {
                     b.Property<Guid>("Id")
                         .HasColumnType("uuid")
@@ -54,7 +54,7 @@ namespace IIoT.EntityFrameworkCore.Migrations
                     b.ToTable("employees", (string)null);
                 });
 
-            modelBuilder.Entity("IIoT.Core.Employee.Aggregates.Employees.EmployeeDeviceAccess", b =>
+            modelBuilder.Entity("IIoT.Core.Employees.Aggregates.Employees.EmployeeDeviceAccess", b =>
                 {
                     b.Property<Guid>("EmployeeId")
                         .HasColumnType("uuid")
@@ -391,18 +391,18 @@ namespace IIoT.EntityFrameworkCore.Migrations
                     b.ToTable("AspNetUserTokens", (string)null);
                 });
 
-            modelBuilder.Entity("IIoT.Core.Employee.Aggregates.Employees.Employee", b =>
+            modelBuilder.Entity("IIoT.Core.Employees.Aggregates.Employees.Employee", b =>
                 {
                     b.HasOne("IIoT.EntityFrameworkCore.Identity.ApplicationUser", null)
                         .WithOne()
-                        .HasForeignKey("IIoT.Core.Employee.Aggregates.Employees.Employee", "Id")
+                        .HasForeignKey("IIoT.Core.Employees.Aggregates.Employees.Employee", "Id")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("IIoT.Core.Employee.Aggregates.Employees.EmployeeDeviceAccess", b =>
+            modelBuilder.Entity("IIoT.Core.Employees.Aggregates.Employees.EmployeeDeviceAccess", b =>
                 {
-                    b.HasOne("IIoT.Core.Employee.Aggregates.Employees.Employee", "Employee")
+                    b.HasOne("IIoT.Core.Employees.Aggregates.Employees.Employee", "Employee")
                         .WithMany("DeviceAccesses")
                         .HasForeignKey("EmployeeId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -462,7 +462,7 @@ namespace IIoT.EntityFrameworkCore.Migrations
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("IIoT.Core.Employee.Aggregates.Employees.Employee", b =>
+            modelBuilder.Entity("IIoT.Core.Employees.Aggregates.Employees.Employee", b =>
                 {
                     b.Navigation("DeviceAccesses");
                 });
@@ -470,3 +470,4 @@ namespace IIoT.EntityFrameworkCore.Migrations
         }
     }
 }
+

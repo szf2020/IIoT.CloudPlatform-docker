@@ -1,12 +1,12 @@
 ﻿using IIoT.SharedKernel.Domain;
 
-namespace IIoT.Core.Employee.Aggregates.Employees;
+namespace IIoT.Core.Employees.Aggregates.Employees;
 
 /// <summary>
 /// 聚合根:员工/操作员
 /// 包含机台级管辖权(精细颗粒)。
 /// </summary>
-public class Employee : IAggregateRoot
+public class Employee : BaseEntity<Guid>
 {
     private readonly List<EmployeeDeviceAccess> _deviceAccesses = [];
 
@@ -32,7 +32,7 @@ public class Employee : IAggregateRoot
         IsActive = true;
     }
 
-    public Guid Id { get; private set; }
+    public override Guid Id { get; set; }
 
     /// <summary>
     /// 员工工号 (车间设备的登录账号)
@@ -91,3 +91,4 @@ public class Employee : IAggregateRoot
         }
     }
 }
+

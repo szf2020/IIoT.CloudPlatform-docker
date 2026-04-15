@@ -50,8 +50,40 @@ public sealed class DatabaseInitializationOrchestrator(
         // Repair drifted dev databases whose migration history is ahead of the actual schema.
         await dbContext.Database.ExecuteSqlRawAsync(
             """
-            ALTER TABLE "AspNetUsers"
-            ADD COLUMN IF NOT EXISTS "IsEnabled" boolean NOT NULL DEFAULT TRUE;
+            DO $$
+            DECLARE
+                source_col text;
+                has_is_enabled boolean;
+            BEGIN
+                SELECT EXISTS (
+                    SELECT 1
+                    FROM information_schema.columns
+                    WHERE lower(table_name) = 'aspnetusers'
+                      AND lower(column_name) = 'isenabled'
+                )
+                INTO has_is_enabled;
+
+                IF NOT has_is_enabled THEN
+                    SELECT column_name
+                    INTO source_col
+                    FROM information_schema.columns
+                    WHERE lower(table_name) = 'aspnetusers'
+                      AND lower(column_name) IN ('isenabled', 'is_enabled')
+                    ORDER BY CASE WHEN lower(column_name) = 'isenabled' THEN 0 ELSE 1 END
+                    LIMIT 1;
+
+                    IF source_col IS NOT NULL THEN
+                        EXECUTE format('ALTER TABLE "AspNetUsers" RENAME COLUMN %I TO "IsEnabled"', source_col);
+                    ELSE
+                        ALTER TABLE "AspNetUsers"
+                        ADD COLUMN "IsEnabled" boolean NOT NULL DEFAULT TRUE;
+                    END IF;
+                END IF;
+
+                UPDATE "AspNetUsers"
+                SET "IsEnabled" = TRUE
+                WHERE "IsEnabled" IS NULL;
+            END $$;
             """,
             cancellationToken);
     }

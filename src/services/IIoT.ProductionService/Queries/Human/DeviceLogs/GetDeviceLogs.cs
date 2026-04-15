@@ -1,11 +1,9 @@
-using IIoT.Core.Employee.Aggregates.Employees;
-using IIoT.Core.Employee.Specifications;
 using IIoT.Services.Common.Attributes;
 using IIoT.Services.Common.Contracts;
+using IIoT.Services.Common.Contracts.Authorization;
 using IIoT.Services.Common.Contracts.RecordQueries;
 using IIoT.SharedKernel.Messaging;
 using IIoT.SharedKernel.Paging;
-using IIoT.SharedKernel.Repository;
 using IIoT.SharedKernel.Result;
 
 namespace IIoT.ProductionService.Queries.DeviceLogs;
@@ -22,7 +20,7 @@ public record GetDeviceLogsQuery(
 
 public class GetDeviceLogsHandler(
     ICurrentUser currentUser,
-    IReadRepository<Employee> employeeRepository,
+    IDevicePermissionService devicePermissionService,
     IDeviceLogQueryService queryService)
     : IQueryHandler<GetDeviceLogsQuery, Result<PagedList<DeviceLogListItemDto>>>
 {
@@ -38,14 +36,11 @@ public class GetDeviceLogsHandler(
             if (!Guid.TryParse(currentUser.Id, out var userId))
                 return Result.Failure("用户凭证异常");
 
-            var employee = await employeeRepository.GetSingleOrDefaultAsync(
-                new EmployeeWithAccessesSpec(userId),
+            var accessibleDeviceIds = await devicePermissionService.GetAccessibleDeviceIdsAsync(
+                userId,
+                isAdmin: false,
                 cancellationToken);
-
-            if (employee == null)
-                return Result.Failure("系统中未找到您的员工档案");
-
-            if (!employee.DeviceAccesses.Any(d => d.DeviceId == request.DeviceId))
+            if (accessibleDeviceIds is null || !accessibleDeviceIds.Contains(request.DeviceId))
                 return Result.Failure("无权查看该设备日志");
         }
 

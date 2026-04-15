@@ -1,25 +1,26 @@
-﻿using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using EmployeeEntity = IIoT.Core.Employees.Aggregates.Employees.Employee;
 using IIoT.EntityFrameworkCore.Identity;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace IIoT.EntityFrameworkCore.Configuration.Employee;
 
 /// <summary>
-/// 员工(操作员)实体的 EF Core 数据库映射配置
+/// 员工（操作员）实体的 EF Core 映射配置。
 /// </summary>
-public class EmployeeConfiguration : IEntityTypeConfiguration<Core.Employee.Aggregates.Employees.Employee>
+public class EmployeeConfiguration : IEntityTypeConfiguration<EmployeeEntity>
 {
-    public void Configure(EntityTypeBuilder<Core.Employee.Aggregates.Employees.Employee> builder)
+    public void Configure(EntityTypeBuilder<EmployeeEntity> builder)
     {
         builder.ToTable("employees");
 
         builder.HasKey(e => e.Id);
         builder.Property(e => e.Id).HasColumnName("id");
 
-        // Employee.Id 是 ApplicationUser.Id 的外键,账号删除时级联删除员工档案
+        // Employee.Id 同时也是 ApplicationUser.Id，账号删除时级联删除员工档案。
         builder.HasOne<ApplicationUser>()
             .WithOne()
-            .HasForeignKey<Core.Employee.Aggregates.Employees.Employee>(e => e.Id)
+            .HasForeignKey<EmployeeEntity>(e => e.Id)
             .OnDelete(DeleteBehavior.Cascade);
 
         builder.Property(e => e.EmployeeNo)
@@ -40,7 +41,7 @@ public class EmployeeConfiguration : IEntityTypeConfiguration<Core.Employee.Aggr
             .IsUnique()
             .HasDatabaseName("ix_employees_employee_no");
 
-        // 配置一对多导航属性：具体设备管辖权
+        // 一个员工可以关联多个可操作设备。
         builder.HasMany(e => e.DeviceAccesses)
             .WithOne(eda => eda.Employee)
             .HasForeignKey(eda => eda.EmployeeId)

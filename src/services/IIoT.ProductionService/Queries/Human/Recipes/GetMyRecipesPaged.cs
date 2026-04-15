@@ -1,9 +1,8 @@
-﻿using IIoT.Core.Employee.Aggregates.Employees;
-using IIoT.Core.Employee.Specifications;
 using IIoT.Core.Production.Aggregates.Recipes;
 using IIoT.Core.Production.Specifications.Recipes;
 using IIoT.Services.Common.Attributes;
 using IIoT.Services.Common.Contracts;
+using IIoT.Services.Common.Contracts.Authorization;
 using IIoT.SharedKernel.Messaging;
 using IIoT.SharedKernel.Paging;
 using IIoT.SharedKernel.Repository;
@@ -28,26 +27,28 @@ public record GetMyRecipesPagedQuery(
 
 public class GetMyRecipesPagedHandler(
     ICurrentUser currentUser,
-    IReadRepository<Employee> employeeRepository,
+    IDevicePermissionService devicePermissionService,
     IReadRepository<Recipe> recipeRepository
 ) : IQueryHandler<GetMyRecipesPagedQuery, Result<PagedList<RecipeListItemDto>>>
 {
-    public async Task<Result<PagedList<RecipeListItemDto>>> Handle(GetMyRecipesPagedQuery request, CancellationToken cancellationToken)
+    public async Task<Result<PagedList<RecipeListItemDto>>> Handle(
+        GetMyRecipesPagedQuery request,
+        CancellationToken cancellationToken)
     {
         List<Guid>? allowedDeviceIds = null;
 
         if (currentUser.Role != "Admin")
         {
-            if (!Guid.TryParse(currentUser.Id, out var userId)) return Result.Failure("用户凭证异常");
+            if (!Guid.TryParse(currentUser.Id, out var userId))
+                return Result.Failure("用户凭证异常");
 
-            var employeeSpec = new EmployeeWithAccessesSpec(userId);
-            var employee = await employeeRepository.GetSingleOrDefaultAsync(employeeSpec, cancellationToken);
+            var accessibleDeviceIds = await devicePermissionService.GetAccessibleDeviceIdsAsync(
+                userId,
+                isAdmin: false,
+                cancellationToken);
+            allowedDeviceIds = accessibleDeviceIds?.ToList();
 
-            if (employee == null) return Result.Failure("系统中未找到您的员工档案");
-
-            allowedDeviceIds = employee.DeviceAccesses.Select(d => d.DeviceId).ToList();
-
-            if (allowedDeviceIds.Count == 0)
+            if (allowedDeviceIds is null || allowedDeviceIds.Count == 0)
             {
                 var emptyList = new PagedList<RecipeListItemDto>([], 0, request.PaginationParams);
                 return Result.Success(emptyList);

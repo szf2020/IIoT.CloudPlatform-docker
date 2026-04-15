@@ -1,7 +1,8 @@
-﻿using IIoT.Core.Production.Aggregates.Recipes;
+using IIoT.Core.Production.Aggregates.Recipes;
 using IIoT.Core.Production.Specifications.Recipes;
 using IIoT.Services.Common.Caching;
 using IIoT.Services.Common.Contracts;
+using IIoT.Services.Common.Contracts.RecordQueries;
 using IIoT.SharedKernel.Messaging;
 using IIoT.SharedKernel.Repository;
 using IIoT.SharedKernel.Result;
@@ -28,7 +29,7 @@ public record GetRecipesByDeviceIdQuery(Guid DeviceId) : IDeviceQuery<Result<Lis
 
 public class GetRecipesByDeviceIdHandler(
     IReadRepository<Recipe> recipeRepository,
-    IDataQueryService dataQueryService,
+    IDeviceReadQueryService deviceReadQueryService,
     ICacheService cacheService
 ) : IQueryHandler<GetRecipesByDeviceIdQuery, Result<List<RecipeForDeviceDto>>>
 {
@@ -41,11 +42,12 @@ public class GetRecipesByDeviceIdHandler(
         var cached = await cacheService.GetAsync<List<RecipeForDeviceDto>>(cacheKey, cancellationToken);
         if (cached != null) return Result.Success(cached);
 
-        var deviceExists = await dataQueryService.AnyAsync(
-            dataQueryService.Devices.Where(d => d.Id == request.DeviceId));
+        var deviceExists = await deviceReadQueryService.ExistsAsync(
+            request.DeviceId,
+            cancellationToken);
 
         if (!deviceExists)
-            return Result.Failure("查询失败:设备不存在或已停用");
+            return Result.Failure("查询失败: 设备不存在或已停用");
 
         var spec = new RecipeByDeviceIdSpec(request.DeviceId);
         var recipes = await recipeRepository.GetListAsync(spec, cancellationToken);

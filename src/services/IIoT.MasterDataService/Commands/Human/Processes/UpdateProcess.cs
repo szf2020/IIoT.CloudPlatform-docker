@@ -3,6 +3,7 @@ using IIoT.Core.MasterData.Specifications;
 using IIoT.Services.Common.Attributes;
 using IIoT.Services.Common.Caching;
 using IIoT.Services.Common.Contracts;
+using IIoT.Services.Common.Contracts.RecordQueries;
 using IIoT.SharedKernel.Messaging;
 using IIoT.SharedKernel.Repository;
 using IIoT.SharedKernel.Result;
@@ -19,7 +20,7 @@ public record UpdateProcessCommand(
 
 public class UpdateProcessHandler(
     IRepository<MfgProcess> processRepository,
-    IDataQueryService dataQueryService,
+    IProcessReadQueryService processReadQueryService,
     ICacheService cacheService
 ) : ICommandHandler<UpdateProcessCommand, Result<bool>>
 {
@@ -49,9 +50,10 @@ public class UpdateProcessHandler(
             return Result.Failure("未找到目标工序档案");
         }
 
-        var codeOccupied = await dataQueryService.AnyAsync(
-            dataQueryService.MfgProcesses.Where(p =>
-                p.ProcessCode == code && p.Id != request.ProcessId));
+        var codeOccupied = await processReadQueryService.CodeExistsAsync(
+            code,
+            request.ProcessId,
+            cancellationToken);
 
         if (codeOccupied)
         {

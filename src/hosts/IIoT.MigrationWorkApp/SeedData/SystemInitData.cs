@@ -1,4 +1,4 @@
-﻿using IIoT.Core.Employee.Aggregates.Employees;
+﻿using IIoT.Core.Employees.Aggregates.Employees;
 using IIoT.EntityFrameworkCore;
 using IIoT.EntityFrameworkCore.Identity;
 using Microsoft.AspNetCore.Identity;
@@ -96,3 +96,4 @@ public static class SystemInitData
         });
     }
 }
+

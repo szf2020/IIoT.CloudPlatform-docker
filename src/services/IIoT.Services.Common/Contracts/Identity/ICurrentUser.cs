@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-
-namespace IIoT.Services.Common.Contracts;
+namespace IIoT.Services.Common.Contracts.Identity;
 
 public interface ICurrentUser
 {

@@ -1,6 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
-using IIoT.Core.Employee.Aggregates.Employees;
+using IIoT.Core.Employees.Aggregates.Employees;
 
 namespace IIoT.EntityFrameworkCore.Configuration.Employee;
 

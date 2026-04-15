@@ -1,5 +1,5 @@
-using IIoT.Core.Employee.Aggregates.Employees;
-using IIoT.Core.Employee.Specifications;
+﻿using IIoT.Core.Employees.Aggregates.Employees;
+using IIoT.Core.Employees.Specifications;
 using IIoT.Services.Common.Attributes;
 using IIoT.Services.Common.Contracts;
 using IIoT.SharedKernel.Messaging;
@@ -14,29 +14,43 @@ public record TerminateEmployeeCommand(Guid EmployeeId) : IHumanCommand<Result>;
 
 public class TerminateEmployeeHandler(
     IRepository<Employee> employeeRepository,
-    IIdentityAccountStore identityAccountStore
-) : ICommandHandler<TerminateEmployeeCommand, Result>
+    IIdentityAccountStore identityAccountStore,
+    IUnitOfWork unitOfWork)
+    : ICommandHandler<TerminateEmployeeCommand, Result>
 {
     public async Task<Result> Handle(
         TerminateEmployeeCommand request,
         CancellationToken cancellationToken)
     {
-        var employee = await employeeRepository.GetSingleOrDefaultAsync(
-            new EmployeeWithAccessesSpec(request.EmployeeId),
-            cancellationToken);
-
-        if (employee is not null)
+        try
         {
-            employeeRepository.Delete(employee);
-            await employeeRepository.SaveChangesAsync(cancellationToken);
-        }
+            await unitOfWork.BeginTransactionAsync(cancellationToken);
 
-        var identityResult = await identityAccountStore.DeleteAsync(request.EmployeeId, cancellationToken);
-        if (!identityResult.IsSuccess)
+            var employee = await employeeRepository.GetSingleOrDefaultAsync(
+                new EmployeeWithAccessesSpec(request.EmployeeId),
+                cancellationToken);
+
+            if (employee is not null)
+            {
+                employeeRepository.Delete(employee);
+                await employeeRepository.SaveChangesAsync(cancellationToken);
+            }
+
+            var identityResult = await identityAccountStore.DeleteAsync(request.EmployeeId, cancellationToken);
+            if (!identityResult.IsSuccess)
+            {
+                await unitOfWork.RollbackAsync(cancellationToken);
+                return Result.Failure(identityResult.Errors?.ToArray() ?? ["账号销毁失败"]);
+            }
+
+            await unitOfWork.CommitAsync(cancellationToken);
+            return Result.Success();
+        }
+        catch (Exception ex)
         {
-            return Result.Failure(identityResult.Errors?.ToArray() ?? ["员工账号注销失败"]);
+            await unitOfWork.RollbackAsync(cancellationToken);
+            return Result.Failure($"离职办理失败: {ex.Message}");
         }
-
-        return Result.Success();
     }
 }
+

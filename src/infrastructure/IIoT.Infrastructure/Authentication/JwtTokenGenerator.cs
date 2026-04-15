@@ -11,7 +11,11 @@ public class JwtTokenGenerator(IOptions<JwtSettings> jwtOptions) : IJwtTokenGene
 {
     private readonly JwtSettings _jwtSettings = jwtOptions.Value;
 
-    public string GenerateToken(Guid userId, string employeeNo, IList<string> roles, IList<string> permissions)
+    public string GenerateToken(
+        Guid userId,
+        string employeeNo,
+        IEnumerable<string> roles,
+        IEnumerable<string> permissions)
     {
         var claims = new List<Claim>
         {

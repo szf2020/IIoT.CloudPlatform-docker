@@ -1,9 +1,10 @@
-﻿namespace IIoT.Services.Common.Contracts;
+namespace IIoT.Services.Common.Contracts.Identity;
 
-/// <summary>
-/// JWT 令牌生成器契约。
-/// </summary>
 public interface IJwtTokenGenerator
 {
-    string GenerateToken(Guid userId, string employeeNo, IList<string> roles, IList<string> permissions);
+    string GenerateToken(
+        Guid userId,
+        string userName,
+        IEnumerable<string> roles,
+        IEnumerable<string> permissions);
 }

@@ -22,7 +22,7 @@ public enum RecipeStatus
 /// 聚合根:工艺配方
 /// 支持版本管理:修改配方 = 创建新版本,旧版本由用例显式归档。
 /// </summary>
-public class Recipe : IAggregateRoot
+public class Recipe : BaseEntity<Guid>
 {
     /// <summary>
     /// 仅供 EF Core 物化使用,业务代码不要调用。
@@ -74,7 +74,7 @@ public class Recipe : IAggregateRoot
         Status = RecipeStatus.Active;
     }
 
-    public Guid Id { get; private set; }
+    public override Guid Id { get; set; }
 
     /// <summary>
     /// 配方名称

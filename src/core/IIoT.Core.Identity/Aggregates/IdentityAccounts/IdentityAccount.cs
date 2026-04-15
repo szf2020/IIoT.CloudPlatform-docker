@@ -2,7 +2,7 @@ using IIoT.SharedKernel.Domain;
 
 namespace IIoT.Core.Identity.Aggregates.IdentityAccounts;
 
-public class IdentityAccount : IAggregateRoot
+public class IdentityAccount : BaseEntity<Guid>
 {
     protected IdentityAccount() { }
 
@@ -20,7 +20,7 @@ public class IdentityAccount : IAggregateRoot
         IsEnabled = isEnabled;
     }
 
-    public Guid Id { get; private set; }
+    public override Guid Id { get; set; }
 
     public string EmployeeNo { get; private set; } = null!;
 

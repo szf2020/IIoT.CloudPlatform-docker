@@ -45,4 +45,6 @@ public static class CacheKeys
         $"iiot:capacity:paged:v1:{date:yyyyMMdd}:{deviceId}:{pageNumber}:{pageSize}";
 
     public static string CapacityPagedByDevicePattern(Guid deviceId) => $"iiot:capacity:paged:v1:*:{deviceId}:*:*";
+
+    public static string DeviceAccessesByUser(Guid userId) => $"iiot:device-access:user:{userId}";
 }

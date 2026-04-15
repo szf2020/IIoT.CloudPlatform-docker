@@ -4,7 +4,7 @@
     <Project Path="src/core/IIoT.Core.Identity/IIoT.Core.Identity.csproj" />
     <Project Path="src/core/IIoT.Core.MasterData/IIoT.Core.MasterData.csproj" />
     <Project Path="src/core/IIoT.Core.Production/IIoT.Core.Production.csproj" />
-    <Project Path="src/core/IIoT.Employee/IIoT.Core.Employees.csproj" />
+    <Project Path="src/core/IIoT.Core.Employees/IIoT.Core.Employees.csproj" />
   </Folder>
   <Folder Name="/src/hosts/">
     <Project Path="src/hosts/IIoT.AppHost/IIoT.AppHost.csproj" Id="b7243472-2e78-43e6-a9a2-2fce65e974d4" />
@@ -31,5 +31,6 @@
   </Folder>
   <Folder Name="/src/tests/">
     <Project Path="src/tests/IIoT.EndToEndTests/IIoT.EndToEndTests.csproj" Id="69d80425-d1b5-4f1c-a542-4a339531f08a" />
+    <Project Path="src/tests/IIoT.ServiceLayer.Tests/IIoT.ServiceLayer.Tests.csproj" />
   </Folder>
 </Solution>

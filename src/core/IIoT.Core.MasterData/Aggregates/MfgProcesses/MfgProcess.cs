@@ -5,7 +5,7 @@ namespace IIoT.Core.MasterData.Aggregates.MfgProcesses;
 /// <summary>
 /// 聚合根:制造工序(权限挂载的核心锚点)
 /// </summary>
-public class MfgProcess : IAggregateRoot
+public class MfgProcess : BaseEntity<Guid>
 {
     /// <summary>
     /// 仅供 EF Core 物化使用,业务代码不要调用。
@@ -25,7 +25,7 @@ public class MfgProcess : IAggregateRoot
     /// <summary>
     /// 工序全局唯一标识 (UUID)
     /// </summary>
-    public Guid Id { get; private set; }
+    public override Guid Id { get; set; }
 
     /// <summary>
     /// 工序系统编码 (如:Stacking, Injection 等)

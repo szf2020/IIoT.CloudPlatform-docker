@@ -8,7 +8,7 @@ namespace IIoT.Core.Production.Aggregates.Devices;
 /// 唯一身份 = ClientInstanceId(MacAddress + ClientCode)。
 /// 一台物理宿主机可承载多个上位机实例,因此 MacAddress 单独不构成身份。
 /// </summary>
-public class Device : IAggregateRoot
+public class Device : BaseEntity<Guid>
 {
     /// <summary>
     /// 仅供 EF Core 物化使用,业务代码不要调用。
@@ -32,7 +32,7 @@ public class Device : IAggregateRoot
         ProcessId = processId;
     }
 
-    public Guid Id { get; private set; }
+    public override Guid Id { get; set; }
 
     public string DeviceName { get; private set; } = null!;
 

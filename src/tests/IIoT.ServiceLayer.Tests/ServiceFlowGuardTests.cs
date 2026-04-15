@@ -1,0 +1,129 @@
+using IIoT.Core.Employees.Aggregates.Employees;
+using IIoT.Core.MasterData.Aggregates.MfgProcesses;
+using IIoT.Core.Production.Aggregates.Devices;
+using IIoT.Core.Production.Aggregates.Recipes;
+using IIoT.EmployeeService.Commands.Employees;
+using IIoT.MasterDataService.Commands.Processes;
+using IIoT.ProductionService.Commands.Devices;
+using IIoT.ProductionService.Commands.Recipes;
+using IIoT.Services.Common.Caching;
+using Xunit;
+
+namespace IIoT.ServiceLayer.Tests;
+
+public sealed class ServiceFlowGuardTests
+{
+    [Fact]
+    public async Task CreateProcessHandler_ShouldRejectDuplicateProcessCode()
+    {
+        var repository = new InMemoryRepository<MfgProcess>();
+        var processQueries = new StubProcessReadQueryService { CodeExists = true };
+        var cache = new RecordingCacheService();
+        var handler = new CreateProcessHandler(repository, processQueries, cache);
+
+        var result = await handler.Handle(
+            new CreateProcessCommand(" PROC-001 ", "注液工序"),
+            CancellationToken.None);
+
+        Assert.False(result.IsSuccess);
+        Assert.Contains("已存在", result.Errors!.Single().ToString());
+        Assert.Null(repository.AddedEntity);
+        Assert.Empty(cache.RemovedKeys);
+    }
+
+    [Fact]
+    public async Task RegisterDeviceHandler_ShouldCreateDeviceAndClearCaches()
+    {
+        var repository = new InMemoryRepository<Device>();
+        var processId = Guid.NewGuid();
+        var processQueries = new StubProcessReadQueryService { Exists = true };
+        var deviceQueries = new StubDeviceReadQueryService();
+        var cache = new RecordingCacheService();
+        var handler = new RegisterDeviceHandler(repository, processQueries, deviceQueries, cache);
+
+        var result = await handler.Handle(
+            new RegisterDeviceCommand(
+                "注液机台-A",
+                "AA:BB:CC:DD:EE:FF",
+                "CLIENT-01",
+                processId),
+            CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        Assert.NotEqual(Guid.Empty, result.Value);
+        Assert.NotNull(repository.AddedEntity);
+        Assert.Equal(processId, repository.AddedEntity!.ProcessId);
+        Assert.Contains(CacheKeys.AllDevices(), cache.RemovedKeys);
+        Assert.Contains(CacheKeys.DevicesByProcess(processId), cache.RemovedKeys);
+    }
+
+    [Fact]
+    public async Task UpgradeRecipeVersionHandler_ShouldArchiveActiveVersionAndCreateNewRecipe()
+    {
+        var processId = Guid.NewGuid();
+        var deviceId = Guid.NewGuid();
+        var source = new Recipe("注液配方", processId, "{\"speed\":120}", deviceId);
+        var repository = new InMemoryRepository<Recipe>
+        {
+            SingleOrDefaultResult = source
+        };
+        repository.ListResult.Add(source);
+
+        var cache = new RecordingCacheService();
+        var handler = new UpgradeRecipeVersionHandler(
+            new TestCurrentUser
+            {
+                Id = Guid.NewGuid().ToString(),
+                Role = "Admin",
+                UserName = "admin",
+                IsAuthenticated = true
+            },
+            repository,
+            new StubRecipeReadQueryService(),
+            cache,
+            new StubDevicePermissionService());
+
+        var result = await handler.Handle(
+            new UpgradeRecipeVersionCommand(source.Id, "V1.1", "{\"speed\":130}"),
+            CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(RecipeStatus.Archived, source.Status);
+        Assert.Contains(source, repository.UpdatedEntities);
+        Assert.NotNull(repository.AddedEntity);
+        Assert.Equal("V1.1", repository.AddedEntity!.Version);
+        Assert.Equal(processId, repository.AddedEntity.ProcessId);
+        Assert.Equal(deviceId, repository.AddedEntity.DeviceId);
+        Assert.Contains(CacheKeys.Recipe(source.Id), cache.RemovedKeys);
+        Assert.Contains(CacheKeys.RecipesByProcess(processId), cache.RemovedKeys);
+        Assert.Contains(CacheKeys.RecipesByDevice(deviceId), cache.RemovedKeys);
+    }
+
+    [Fact]
+    public async Task UpdateEmployeeProfileHandler_ShouldDeactivateEmployeeAndSyncIdentityState()
+    {
+        var employeeId = Guid.NewGuid();
+        var employee = new Employee(employeeId, "E001", "旧名字");
+        var repository = new InMemoryRepository<Employee>
+        {
+            SingleOrDefaultResult = employee
+        };
+        var identityStore = new RecordingIdentityAccountStore();
+        var unitOfWork = new RecordingUnitOfWork();
+        var handler = new UpdateEmployeeProfileHandler(repository, identityStore, unitOfWork);
+
+        var result = await handler.Handle(
+            new UpdateEmployeeProfileCommand(employeeId, " 新名字 ", false),
+            CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal("新名字", employee.RealName);
+        Assert.False(employee.IsActive);
+        Assert.Contains(employee, repository.UpdatedEntities);
+        Assert.Equal(employeeId, identityStore.LastSetEnabledId);
+        Assert.False(identityStore.LastSetEnabledValue);
+        Assert.Equal(1, unitOfWork.BeginCalls);
+        Assert.Equal(1, unitOfWork.CommitCalls);
+        Assert.Equal(0, unitOfWork.RollbackCalls);
+    }
+}

@@ -1,11 +1,9 @@
-using IIoT.Core.Employee.Aggregates.Employees;
-using IIoT.Core.Employee.Specifications;
 using IIoT.Services.Common.Attributes;
 using IIoT.Services.Common.Contracts;
+using IIoT.Services.Common.Contracts.Authorization;
 using IIoT.Services.Common.Contracts.RecordQueries;
 using IIoT.SharedKernel.Messaging;
 using IIoT.SharedKernel.Paging;
-using IIoT.SharedKernel.Repository;
 using IIoT.SharedKernel.Result;
 
 namespace IIoT.ProductionService.Queries.PassStations;
@@ -22,8 +20,8 @@ public record GetPassStationListQuery<TDto>(
 
 public sealed class GetPassStationListHandler<TDto>(
     ICurrentUser currentUser,
-    IReadRepository<Employee> employeeRepository,
-    IDataQueryService dataQueryService,
+    IDevicePermissionService devicePermissionService,
+    IProcessReadQueryService processReadQueryService,
     IPassStationQueryService<TDto> queryService)
     : IQueryHandler<GetPassStationListQuery<TDto>, Result<PagedList<TDto>>>
 {
@@ -38,32 +36,29 @@ public sealed class GetPassStationListHandler<TDto>(
             if (!Guid.TryParse(currentUser.Id, out var userId))
                 return Result.Failure("用户凭证异常");
 
-            var employee = await employeeRepository.GetSingleOrDefaultAsync(
-                new EmployeeWithAccessesSpec(userId),
+            var accessibleDeviceIds = await devicePermissionService.GetAccessibleDeviceIdsAsync(
+                userId,
+                isAdmin: false,
                 cancellationToken);
+            allowedDeviceIds = accessibleDeviceIds?.ToList();
 
-            if (employee == null)
-                return Result.Failure("系统中未找到您的员工档案");
-
-            allowedDeviceIds = employee.DeviceAccesses
-                .Select(d => d.DeviceId)
-                .ToList();
-
-            if (request.DeviceId.HasValue && !allowedDeviceIds.Contains(request.DeviceId.Value))
-                return Result.Failure("无权查看该设备过站记录");
+            if (request.DeviceId.HasValue
+                && (allowedDeviceIds is null || !allowedDeviceIds.Contains(request.DeviceId.Value)))
+            {
+                return Result.Failure("无权查看该设备");
+            }
         }
 
         List<Guid>? deviceIds = null;
 
         if (request.ProcessId.HasValue)
         {
-            var devices = await dataQueryService.ToListAsync(
-                dataQueryService.Devices.Where(d => d.ProcessId == request.ProcessId.Value));
+            deviceIds = (await processReadQueryService.GetDeviceIdsAsync(
+                request.ProcessId.Value,
+                cancellationToken)).ToList();
 
-            if (devices.Count == 0)
-                return Result.Failure("该工序下没有设备");
-
-            deviceIds = devices.Select(d => d.Id).ToList();
+            if (deviceIds.Count == 0)
+                return Result.Failure("该工序下暂无设备");
 
             if (allowedDeviceIds is not null)
             {
@@ -100,7 +95,7 @@ public record GetPassStationDetailQuery<TDto>(Guid Id) : IHumanQuery<Result<TDto
 
 public sealed class GetPassStationDetailHandler<TDto>(
     ICurrentUser currentUser,
-    IReadRepository<Employee> employeeRepository,
+    IDevicePermissionService devicePermissionService,
     IPassStationQueryService<TDto> queryService)
     : IQueryHandler<GetPassStationDetailQuery<TDto>, Result<TDto>>
 {
@@ -117,20 +112,17 @@ public sealed class GetPassStationDetailHandler<TDto>(
             if (!Guid.TryParse(currentUser.Id, out var userId))
                 return Result.Failure("用户凭证异常");
 
-            var employee = await employeeRepository.GetSingleOrDefaultAsync(
-                new EmployeeWithAccessesSpec(userId),
+            var accessibleDeviceIds = await devicePermissionService.GetAccessibleDeviceIdsAsync(
+                userId,
+                isAdmin: false,
                 cancellationToken);
-
-            if (employee == null)
-                return Result.Failure("系统中未找到您的员工档案");
-
             var deviceId = TryReadDeviceId(detail);
             if (deviceId == Guid.Empty)
                 throw new InvalidOperationException(
                     $"Pass station detail dto '{typeof(TDto).Name}' must expose a DeviceId property.");
 
-            if (!employee.DeviceAccesses.Any(d => d.DeviceId == deviceId))
-                return Result.Failure("无权查看该过站记录");
+            if (accessibleDeviceIds is null || !accessibleDeviceIds.Contains(deviceId))
+                return Result.Failure("无权查看该设备");
         }
 
         return Result.Success(detail);
@@ -154,7 +146,7 @@ public record GetPassStationLatest200Query<TDto>(
 
 public sealed class GetPassStationLatest200Handler<TDto>(
     ICurrentUser currentUser,
-    IReadRepository<Employee> employeeRepository,
+    IDevicePermissionService devicePermissionService,
     IPassStationQueryService<TDto> queryService)
     : IQueryHandler<GetPassStationLatest200Query<TDto>, Result<PagedList<TDto>>>
 {
@@ -167,15 +159,12 @@ public sealed class GetPassStationLatest200Handler<TDto>(
             if (!Guid.TryParse(currentUser.Id, out var userId))
                 return Result.Failure("用户凭证异常");
 
-            var employee = await employeeRepository.GetSingleOrDefaultAsync(
-                new EmployeeWithAccessesSpec(userId),
+            var accessibleDeviceIds = await devicePermissionService.GetAccessibleDeviceIdsAsync(
+                userId,
+                isAdmin: false,
                 cancellationToken);
-
-            if (employee == null)
-                return Result.Failure("系统中未找到您的员工档案");
-
-            if (!employee.DeviceAccesses.Any(d => d.DeviceId == request.DeviceId))
-                return Result.Failure("无权查看该设备过站记录");
+            if (accessibleDeviceIds is null || !accessibleDeviceIds.Contains(request.DeviceId))
+                return Result.Failure("无权查看该设备");
         }
 
         var (items, totalCount) = await queryService.GetLatest200ByDeviceAsync(
