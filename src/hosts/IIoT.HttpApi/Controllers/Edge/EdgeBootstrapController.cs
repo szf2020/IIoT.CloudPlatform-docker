@@ -13,6 +13,7 @@ public class EdgeBootstrapController : ApiControllerBase
 {
     [HttpGet("device-instance")]
     public async Task<IActionResult> GetDeviceByInstance(
+        // Keep the legacy query parameter name for existing edge clients.
         [FromQuery] string clientCode)
     {
         var result = await Sender.Send(new GetDeviceByInstanceQuery(clientCode));

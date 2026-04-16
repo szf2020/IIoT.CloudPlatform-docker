@@ -3,6 +3,7 @@ using IIoT.HttpApi;
 using IIoT.MigrationWorkApp.SeedData;
 using Microsoft.Extensions.Configuration;
 using System.IO;
+using System.Text.RegularExpressions;
 
 namespace IIoT.EndToEndTests;
 
@@ -72,6 +73,65 @@ public sealed class ConfigurationGuardTests
         appHostSource.Should().Contain("WithEnvironment(\"SEED_ADMIN_PASSWORD\", seedAdminPassword)");
     }
 
+    [Fact]
+    public void MigrationWorkApp_ShouldPrecheckAndNormalizeLegacyDeviceCodesBeforeCreatingUniqueIndex()
+    {
+        var orchestratorSource = File.ReadAllText(
+            FindRepoFile("src", "hosts", "IIoT.MigrationWorkApp", "DatabaseInitializationOrchestrator.cs"));
+
+        orchestratorSource.Should().Contain("UPPER(BTRIM(client_code))");
+        orchestratorSource.Should().Contain("COUNT(*) AS duplicate_count");
+        orchestratorSource.Should().Contain("设备 Code 升级已被阻止");
+        orchestratorSource.Should().Contain("CREATE UNIQUE INDEX IF NOT EXISTS ix_devices_client_code ON devices (client_code);");
+        orchestratorSource.Should().Contain("ALTER TABLE devices DROP COLUMN IF EXISTS mac_address;");
+    }
+
+    [Fact]
+    public void EdgeBootstrapController_ShouldKeepLegacyClientCodeQueryParameterForCompatibility()
+    {
+        var controllerSource = File.ReadAllText(
+            FindRepoFile("src", "hosts", "IIoT.HttpApi", "Controllers", "Edge", "EdgeBootstrapController.cs"));
+
+        controllerSource.Should().Contain("[FromQuery] string clientCode");
+        controllerSource.Should().Contain("existing edge clients");
+    }
+
+    [Fact]
+    public void HttpApiControllers_ShouldOnlyExposeHumanAndEdgeRoutes()
+    {
+        var controllerDirectory = FindRepoDirectory("src", "hosts", "IIoT.HttpApi", "Controllers");
+        var invalidRoutes = new List<string>();
+
+        foreach (var file in Directory.GetFiles(controllerDirectory, "*.cs", SearchOption.AllDirectories))
+        {
+            var source = File.ReadAllText(file);
+            var matches = Regex.Matches(source, "\\[Route\\(\"([^\"]+)\"\\)\\]");
+
+            foreach (Match match in matches)
+            {
+                var route = match.Groups[1].Value;
+                if (!route.StartsWith("api/v1/human/", StringComparison.Ordinal)
+                    && !route.StartsWith("api/v1/edge/", StringComparison.Ordinal))
+                {
+                    invalidRoutes.Add($"{Path.GetFileName(file)}:{route}");
+                }
+            }
+        }
+
+        invalidRoutes.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void HttpApiAppSettings_ShouldDefinePermissionCacheExpirationMinutes()
+    {
+        var appSettingsPath = FindRepoFile("src", "hosts", "IIoT.HttpApi", "appsettings.json");
+        var configuration = new ConfigurationBuilder()
+            .AddJsonFile(appSettingsPath)
+            .Build();
+
+        configuration.GetValue<int>("PermissionCache:ExpirationMinutes").Should().BeGreaterThan(0);
+    }
+
     private static string FindRepoFile(params string[] relativeSegments)
     {
         var current = new DirectoryInfo(AppContext.BaseDirectory);
@@ -88,5 +148,12 @@ public sealed class ConfigurationGuardTests
         }
 
         throw new DirectoryNotFoundException("Could not locate repository root for AppHost source inspection.");
+    }
+
+    private static string FindRepoDirectory(params string[] relativeSegments)
+    {
+        var filePath = FindRepoFile(relativeSegments);
+        return Path.GetDirectoryName(filePath)
+               ?? throw new DirectoryNotFoundException("Could not resolve repository directory.");
     }
 }

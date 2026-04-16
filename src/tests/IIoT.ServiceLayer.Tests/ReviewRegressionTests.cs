@@ -13,6 +13,7 @@ using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Xunit;
 
 namespace IIoT.ServiceLayer.Tests;
 
@@ -24,10 +25,10 @@ public sealed class ReviewRegressionTests
         var processId = Guid.NewGuid();
         var deviceId = Guid.NewGuid();
 
-        Assert.Throws<ArgumentException>(() => new Recipe(null!, processId, deviceId, "{\"speed\":120}"));
-        Assert.Throws<ArgumentException>(() => new Recipe("  ", processId, deviceId, "{\"speed\":120}"));
-        Assert.Throws<ArgumentException>(() => new Recipe("Recipe", processId, deviceId, null!));
-        Assert.Throws<ArgumentException>(() => new Recipe("Recipe", processId, deviceId, "   "));
+        Assert.ThrowsAny<ArgumentException>(() => new Recipe(null!, processId, deviceId, "{\"speed\":120}"));
+        Assert.ThrowsAny<ArgumentException>(() => new Recipe("  ", processId, deviceId, "{\"speed\":120}"));
+        Assert.ThrowsAny<ArgumentException>(() => new Recipe("Recipe", processId, deviceId, null!));
+        Assert.ThrowsAny<ArgumentException>(() => new Recipe("Recipe", processId, deviceId, "   "));
     }
 
     [Fact]
@@ -35,8 +36,8 @@ public sealed class ReviewRegressionTests
     {
         var recipe = new Recipe("Recipe", Guid.NewGuid(), Guid.NewGuid(), "{\"speed\":120}");
 
-        Assert.Throws<ArgumentException>(() => recipe.CreateNextVersion(null!, "{\"speed\":140}"));
-        Assert.Throws<ArgumentException>(() => recipe.CreateNextVersion("V1.1", null!));
+        Assert.ThrowsAny<ArgumentException>(() => recipe.CreateNextVersion(null!, "{\"speed\":140}"));
+        Assert.ThrowsAny<ArgumentException>(() => recipe.CreateNextVersion("V1.1", null!));
     }
 
     [Fact]
@@ -154,6 +155,12 @@ public sealed class ReviewRegressionTests
         public int PublishAttempts { get; private set; }
 
         public Task<TResponse> Send<TResponse>(IRequest<TResponse> request, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task Send<TRequest>(TRequest request, CancellationToken cancellationToken = default)
+            where TRequest : IRequest
         {
             throw new NotSupportedException();
         }

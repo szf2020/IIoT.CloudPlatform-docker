@@ -5,6 +5,7 @@ using FluentAssertions;
 using IIoT.Services.Common.Events.DeviceLogs;
 using MassTransit;
 using RabbitMQ.Client;
+using RabbitMQ.Client.Exceptions;
 using Xunit;
 
 namespace IIoT.EndToEndTests;
@@ -327,10 +328,14 @@ public sealed class CloudProductionFlowTests : IAsyncLifetime
                 $"/api/v1/human/capacity/hourly?deviceId={deviceId}&date={date:yyyy-MM-dd}&plcName={Uri.EscapeDataString(plcName)}"),
             response => response.Count == 1 && response[0].TotalCount == 20);
 
-        var humanSummary = await GetFromJsonAsync<DailySummaryDto>(
-            $"/api/v1/human/capacity/summary?deviceId={deviceId}&date={date:yyyy-MM-dd}&plcName={Uri.EscapeDataString(plcName)}");
-        var humanRange = await GetFromJsonAsync<List<DailyRangeSummaryDto>>(
-            $"/api/v1/human/capacity/summary/range?deviceId={deviceId}&startDate={date:yyyy-MM-dd}&endDate={date:yyyy-MM-dd}&plcName={Uri.EscapeDataString(plcName)}");
+        var humanSummary = await EventuallyAsync(
+            async () => await GetFromJsonAsync<DailySummaryDto>(
+                $"/api/v1/human/capacity/summary?deviceId={deviceId}&date={date:yyyy-MM-dd}&plcName={Uri.EscapeDataString(plcName)}"),
+            response => response.TotalCount == 20 && response.OkCount == 18 && response.NgCount == 2);
+        var humanRange = await EventuallyAsync(
+            async () => await GetFromJsonAsync<List<DailyRangeSummaryDto>>(
+                $"/api/v1/human/capacity/summary/range?deviceId={deviceId}&startDate={date:yyyy-MM-dd}&endDate={date:yyyy-MM-dd}&plcName={Uri.EscapeDataString(plcName)}"),
+            response => response.Count == 1 && response[0].TotalCount == 20);
 
         humanHourly.Should().ContainSingle();
         humanSummary.TotalCount.Should().Be(20);
@@ -405,9 +410,8 @@ public sealed class CloudProductionFlowTests : IAsyncLifetime
             DeviceId = device.DeviceId
         });
 
-        var token = await response.Content.ReadFromJsonAsync<string>(JsonOptions);
-
         response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var token = await ReadJwtTokenAsync(response);
         token.Should().NotBeNullOrWhiteSpace();
     }
 
@@ -421,10 +425,29 @@ public sealed class CloudProductionFlowTests : IAsyncLifetime
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
 
-        var token = await response.Content.ReadFromJsonAsync<string>(JsonOptions);
+        var token = await ReadJwtTokenAsync(response);
         token.Should().NotBeNullOrWhiteSpace();
 
         _fixture.SetAuthToken(token!);
+    }
+
+    private static async Task<string> ReadJwtTokenAsync(HttpResponseMessage response)
+    {
+        var body = await response.Content.ReadAsStringAsync();
+        body.Should().NotBeNullOrWhiteSpace();
+
+        try
+        {
+            var token = JsonSerializer.Deserialize<string>(body, JsonOptions);
+            if (!string.IsNullOrWhiteSpace(token))
+                return token;
+        }
+        catch (JsonException)
+        {
+            // Some hosts return JWTs as text/plain instead of a JSON string.
+        }
+
+        return body.Trim();
     }
 
     private async Task<Guid> CreateTestDeviceAsync(string prefix)
@@ -536,10 +559,17 @@ public sealed class CloudProductionFlowTests : IAsyncLifetime
             Uri = new Uri(connectionString)
         };
 
-        await using var connection = await factory.CreateConnectionAsync();
-        await using var channel = await connection.CreateChannelAsync();
-        var queue = await channel.QueueDeclarePassiveAsync(queueName);
-        return queue.MessageCount;
+        try
+        {
+            await using var connection = await factory.CreateConnectionAsync();
+            await using var channel = await connection.CreateChannelAsync();
+            var queue = await channel.QueueDeclarePassiveAsync(queueName);
+            return queue.MessageCount;
+        }
+        catch (OperationInterruptedException ex) when (ex.ShutdownReason?.ReplyCode == 404)
+        {
+            return 0;
+        }
     }
 
     private static async Task<T> EventuallyAsync<T>(

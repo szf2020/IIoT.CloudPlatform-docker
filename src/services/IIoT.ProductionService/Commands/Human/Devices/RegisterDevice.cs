@@ -35,20 +35,20 @@ public class RegisterDeviceHandler(
         var deviceName = request.DeviceName?.Trim() ?? string.Empty;
 
         if (string.IsNullOrEmpty(deviceName))
-            return Result.Failure("DeviceName cannot be empty.");
+            return Result.Failure("设备名称不能为空");
         if (request.ProcessId == Guid.Empty)
-            return Result.Failure("ProcessId cannot be empty.");
+            return Result.Failure("ProcessId 不能为空");
 
         var processExists = await processReadQueryService.ExistsAsync(
             request.ProcessId,
             cancellationToken);
 
         if (!processExists)
-            return Result.Failure("Device creation failed: the specified process does not exist.");
+            return Result.Failure("设备创建失败：指定工序不存在");
 
         var code = await GenerateUniqueCodeAsync(deviceReadQueryService, cancellationToken);
         if (code is null)
-            return Result.Failure("Device creation failed: unable to allocate a unique device code.");
+            return Result.Failure("设备创建失败：无法分配唯一设备 Code");
 
         var device = new Device(deviceName, code, request.ProcessId);
 

@@ -29,7 +29,7 @@ public class GetDeviceByInstanceHandler(
     {
         var code = request.Code?.Trim().ToUpperInvariant() ?? string.Empty;
         if (string.IsNullOrWhiteSpace(code))
-            return Result.Failure("Bootstrap failed: code is required.");
+            return Result.Failure("Bootstrap 查询失败：设备 Code 不能为空。");
 
         var cacheKey = CacheKeys.DeviceCode(code);
         var cachedDto = await cacheService.GetAsync<DeviceIdentityDto>(cacheKey, cancellationToken);
@@ -40,7 +40,7 @@ public class GetDeviceByInstanceHandler(
         var device = await deviceRepository.GetSingleOrDefaultAsync(spec, cancellationToken);
 
         if (device is null)
-            return Result.Failure($"Bootstrap failed: no device was found for code [{code}].");
+            return Result.Failure($"Bootstrap 查询失败：未找到 Code 为 [{code}] 的设备。");
 
         var dto = new DeviceIdentityDto(
             device.Id,
