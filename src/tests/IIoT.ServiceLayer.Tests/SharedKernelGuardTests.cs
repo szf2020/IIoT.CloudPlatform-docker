@@ -1,4 +1,5 @@
 using System.Linq.Expressions;
+using IIoT.Services.Common.Caching.Options;
 using IIoT.SharedKernel.Domain;
 using IIoT.SharedKernel.Paging;
 using IIoT.SharedKernel.Result;
@@ -46,6 +47,38 @@ public sealed class SharedKernelGuardTests
         Assert.IsAssignableFrom<IReadOnlyList<string>>(specification.IncludeStrings);
         Assert.Single(specification.Includes);
         Assert.Single(specification.IncludeStrings);
+        Assert.False(specification.Includes is List<Expression<Func<FakeEntity, object>>>);
+        Assert.False(specification.IncludeStrings is List<string>);
+
+        var includes = Assert.IsAssignableFrom<ICollection<Expression<Func<FakeEntity, object>>>>(specification.Includes);
+        var includeStrings = Assert.IsAssignableFrom<ICollection<string>>(specification.IncludeStrings);
+
+        Assert.Throws<NotSupportedException>(() => includes.Add(entity => entity.Name));
+        Assert.Throws<NotSupportedException>(() => includeStrings.Add("GrandChildren"));
+    }
+
+    [Fact]
+    public void PermissionCacheOptions_ShouldPreferMinutes_ThenHours_ThenDefault()
+    {
+        var minutesPreferred = new PermissionCacheOptions
+        {
+            ExpirationMinutes = 10,
+            ExpirationHours = 2
+        };
+        var hoursFallback = new PermissionCacheOptions
+        {
+            ExpirationMinutes = 0,
+            ExpirationHours = 2
+        };
+        var defaultFallback = new PermissionCacheOptions
+        {
+            ExpirationMinutes = 0,
+            ExpirationHours = 0
+        };
+
+        Assert.Equal(TimeSpan.FromMinutes(10), minutesPreferred.ResolveExpiration());
+        Assert.Equal(TimeSpan.FromHours(2), hoursFallback.ResolveExpiration());
+        Assert.Equal(TimeSpan.FromMinutes(10), defaultFallback.ResolveExpiration());
     }
 
     private sealed class FakeEntitySpecification : Specification<FakeEntity>

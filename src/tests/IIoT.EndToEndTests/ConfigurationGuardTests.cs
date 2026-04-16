@@ -2,6 +2,7 @@ using FluentAssertions;
 using IIoT.HttpApi;
 using IIoT.MigrationWorkApp.SeedData;
 using Microsoft.Extensions.Configuration;
+using System.IO;
 
 namespace IIoT.EndToEndTests;
 
@@ -58,5 +59,34 @@ public sealed class ConfigurationGuardTests
 
         act.Should().Throw<InvalidOperationException>()
             .WithMessage($"*{SeedAdminOptions.PasswordKey}*");
+    }
+
+    [Fact]
+    public void AppHost_ShouldWireSeedAdminParametersIntoMigrationProject()
+    {
+        var appHostSource = File.ReadAllText(FindRepoFile("src", "hosts", "IIoT.AppHost", "AppHost.cs"));
+
+        appHostSource.Should().Contain("AddParameter(\"seed-admin-no\"");
+        appHostSource.Should().Contain("AddParameter(\"seed-admin-password\", secret: true)");
+        appHostSource.Should().Contain("WithEnvironment(\"SEED_ADMIN_NO\", seedAdminNo)");
+        appHostSource.Should().Contain("WithEnvironment(\"SEED_ADMIN_PASSWORD\", seedAdminPassword)");
+    }
+
+    private static string FindRepoFile(params string[] relativeSegments)
+    {
+        var current = new DirectoryInfo(AppContext.BaseDirectory);
+
+        while (current is not null)
+        {
+            var candidate = Path.Combine(current.FullName, relativeSegments[0]);
+            if (Directory.Exists(candidate))
+            {
+                return Path.Combine(current.FullName, Path.Combine(relativeSegments));
+            }
+
+            current = current.Parent;
+        }
+
+        throw new DirectoryNotFoundException("Could not locate repository root for AppHost source inspection.");
     }
 }
