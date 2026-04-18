@@ -3,11 +3,20 @@ using IIoT.Core.Employees.Aggregates.Employees;
 using IIoT.Core.Production.Aggregates.Recipes;
 using IIoT.EntityFrameworkCore;
 using IIoT.EntityFrameworkCore.Identity;
+using IIoT.IdentityService.Commands;
+using IIoT.IdentityService.Queries;
 using IIoT.EntityFrameworkCore.Persistence;
+using IIoT.Services.Common.Attributes;
+using IIoT.Services.Common.Behaviors;
+using IIoT.Services.Common.Caching;
 using IIoT.Services.Common.Caching.Options;
 using IIoT.Services.Common.Contracts;
+using IIoT.Services.Common.Contracts.Authorization;
 using IIoT.SharedKernel.Domain;
+using IIoT.SharedKernel.Messaging;
+using IIoT.SharedKernel.Result;
 using MediatR;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.DependencyInjection;
@@ -38,6 +47,14 @@ public sealed class ReviewRegressionTests
 
         Assert.ThrowsAny<ArgumentException>(() => recipe.CreateNextVersion(null!, "{\"speed\":140}"));
         Assert.ThrowsAny<ArgumentException>(() => recipe.CreateNextVersion("V1.1", null!));
+    }
+
+    [Fact]
+    public void Recipe_ShouldRejectInvalidVersionFormat()
+    {
+        var recipe = new Recipe("Recipe", Guid.NewGuid(), Guid.NewGuid(), "{\"speed\":120}");
+
+        Assert.ThrowsAny<ArgumentException>(() => recipe.CreateNextVersion("1.1", "{\"speed\":140}"));
     }
 
     [Fact]
@@ -110,6 +127,204 @@ public sealed class ReviewRegressionTests
 
         Assert.Single(accessibleDeviceIds!);
         Assert.Equal(TimeSpan.FromMinutes(10), cacheService.LastAbsoluteExpireTime);
+        Assert.Equal(1, cacheService.GetOrSetCalls);
+    }
+
+    [Fact]
+    public async Task PermissionProvider_ShouldUseSharedCacheKeyForInvalidationCompatibility()
+    {
+        using var provider = CreateIdentityServiceProvider();
+        using var scope = provider.CreateScope();
+
+        var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+        var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole<Guid>>>();
+        var cacheService = new RecordingCacheService();
+        var permissionProvider = new PermissionProvider(
+            userManager,
+            roleManager,
+            cacheService,
+            Options.Create(new PermissionCacheOptions
+            {
+                KeyPrefix = "custom-prefix:",
+                ExpirationMinutes = 10
+            }));
+
+        var role = "Supervisor";
+        await roleManager.CreateAsync(new IdentityRole<Guid>(role));
+        await roleManager.AddClaimAsync(
+            await roleManager.FindByNameAsync(role) ?? throw new InvalidOperationException("Role was not created."),
+            new System.Security.Claims.Claim("Permission", "Device.Read"));
+
+        var user = new ApplicationUser
+        {
+            Id = Guid.NewGuid(),
+            UserName = "user-001",
+            IsEnabled = true
+        };
+
+        var createUser = await userManager.CreateAsync(user, "Password123");
+        Assert.True(createUser.Succeeded);
+        var addRole = await userManager.AddToRoleAsync(user, role);
+        Assert.True(addRole.Succeeded);
+
+        var permissions = await permissionProvider.GetPermissionsAsync(user.Id);
+
+        Assert.Contains("Device.Read", permissions);
+        Assert.Equal(CacheKeys.PermissionByUser(user.Id), cacheService.LastSetKey);
+        Assert.Equal(1, cacheService.GetOrSetCalls);
+    }
+
+    [Fact]
+    public async Task DefineRolePolicyHandler_ShouldDeleteRoleWhenPermissionAssignmentFails()
+    {
+        var rolePolicyService = new StubRolePolicyService
+        {
+            UpdateRolePermissionsResult = Result.Failure("permission update failed")
+        };
+        var cacheService = new RecordingCacheService();
+        var handler = new DefineRolePolicyHandler(rolePolicyService, cacheService);
+
+        var result = await handler.Handle(
+            new DefineRolePolicyCommand("Auditor", ["Device.Read"]),
+            CancellationToken.None);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal("Auditor", rolePolicyService.DeletedRoleName);
+    }
+
+    [Fact]
+    public async Task DefineRolePolicyHandler_ShouldNotDeleteExistingRoleWhenPermissionAssignmentFails()
+    {
+        var rolePolicyService = new StubRolePolicyService
+        {
+            RoleExists = true,
+            UpdateRolePermissionsResult = Result.Failure("permission update failed")
+        };
+        var cacheService = new RecordingCacheService();
+        var handler = new DefineRolePolicyHandler(rolePolicyService, cacheService);
+
+        var result = await handler.Handle(
+            new DefineRolePolicyCommand("Auditor", ["Device.Read"]),
+            CancellationToken.None);
+
+        Assert.False(result.IsSuccess);
+        Assert.Null(rolePolicyService.DeletedRoleName);
+    }
+
+    [Fact]
+    public async Task ChangePasswordHandler_ShouldRejectCrossUserPasswordChange()
+    {
+        var passwordService = new StubIdentityPasswordService();
+        var currentUserId = Guid.NewGuid();
+        var handler = new ChangePasswordHandler(
+            passwordService,
+            new TestCurrentUser
+            {
+                Id = currentUserId.ToString(),
+                Role = "Operator",
+                UserName = "operator-001",
+                DeviceId = null,
+                IsAuthenticated = true
+            });
+
+        var result = await handler.Handle(
+            new ChangePasswordCommand(Guid.NewGuid(), "OldPassword123!", "NewPassword123!"),
+            CancellationToken.None);
+
+        Assert.False(result.IsSuccess);
+        Assert.Null(passwordService.LastChangedUserId);
+    }
+
+    [Fact]
+    public async Task ChangePasswordHandler_ShouldAllowCurrentUserToChangeOwnPassword()
+    {
+        var currentUserId = Guid.NewGuid();
+        var passwordService = new StubIdentityPasswordService();
+        var handler = new ChangePasswordHandler(
+            passwordService,
+            new TestCurrentUser
+            {
+                Id = currentUserId.ToString(),
+                Role = "Operator",
+                UserName = "operator-001",
+                DeviceId = null,
+                IsAuthenticated = true
+            });
+
+        var result = await handler.Handle(
+            new ChangePasswordCommand(currentUserId, "OldPassword123!", "NewPassword123!"),
+            CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(currentUserId, passwordService.LastChangedUserId);
+    }
+
+    [Fact]
+    public void GetAllRolesQuery_ShouldRequireRoleDefinePermission()
+    {
+        var attribute = typeof(GetAllRolesQuery)
+            .GetCustomAttributes(typeof(AuthorizeRequirementAttribute), inherit: false)
+            .Cast<AuthorizeRequirementAttribute>()
+            .SingleOrDefault();
+
+        Assert.NotNull(attribute);
+        Assert.Equal("Role.Define", attribute!.Permission);
+    }
+
+    [Fact]
+    public async Task DeviceBindingBehavior_ShouldAllowMatchingDeviceId()
+    {
+        var deviceId = Guid.NewGuid();
+        var behavior = new DeviceBindingBehavior<DeviceScopedCommand, Result<bool>>(
+            new TestCurrentUser
+            {
+                Id = Guid.NewGuid().ToString(),
+                UserName = "edge-operator",
+                Role = SystemRoles.Admin,
+                DeviceId = deviceId,
+                IsAuthenticated = true
+            });
+
+        var result = await behavior.Handle(
+            new DeviceScopedCommand(deviceId),
+            _ => Task.FromResult(Result.Success(true)),
+            CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+    }
+
+    [Fact]
+    public async Task DeviceBindingBehavior_ShouldRejectMismatchedDeviceId()
+    {
+        var behavior = new DeviceBindingBehavior<DeviceScopedCommand, Result<bool>>(
+            new TestCurrentUser
+            {
+                Id = Guid.NewGuid().ToString(),
+                UserName = "edge-operator",
+                Role = SystemRoles.Admin,
+                DeviceId = Guid.NewGuid(),
+                IsAuthenticated = true
+            });
+
+        await Assert.ThrowsAsync<IIoT.Services.Common.Exceptions.ForbiddenException>(() =>
+            behavior.Handle(
+                new DeviceScopedCommand(Guid.NewGuid()),
+                _ => Task.FromResult(Result.Success(true)),
+                CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task DistributedLockBehavior_ShouldRejectMissingTemplateProperty()
+    {
+        var behavior = new DistributedLockBehavior<BrokenLockCommand, Result<bool>>(new NoopDistributedLockService());
+
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            behavior.Handle(
+                new BrokenLockCommand(Guid.NewGuid()),
+                _ => Task.FromResult(Result.Success(true)),
+                CancellationToken.None));
+
+        Assert.Contains("MissingProperty", exception.Message, StringComparison.Ordinal);
     }
 
     private static ServiceProvider CreateServiceProvider(IMediator mediator)
@@ -120,6 +335,23 @@ public sealed class ReviewRegressionTests
         services.AddSingleton<IMediator>(mediator);
         services.AddDbContext<IIoTDbContext>(options =>
             options.UseInMemoryDatabase(Guid.NewGuid().ToString("N")));
+
+        return services.BuildServiceProvider();
+    }
+
+    private static ServiceProvider CreateIdentityServiceProvider()
+    {
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddDbContext<IIoTDbContext>(options =>
+            options.UseInMemoryDatabase(Guid.NewGuid().ToString("N")));
+        services.AddIdentityCore<ApplicationUser>(options =>
+            {
+                options.Password.RequireNonAlphanumeric = false;
+                options.Password.RequiredLength = 8;
+            })
+            .AddRoles<IdentityRole<Guid>>()
+            .AddEntityFrameworkStores<IIoTDbContext>();
 
         return services.BuildServiceProvider();
     }
@@ -266,11 +498,28 @@ public sealed class ReviewRegressionTests
 
     private sealed class RecordingCacheService : ICacheService
     {
+        public string? LastSetKey { get; private set; }
+
         public TimeSpan? LastAbsoluteExpireTime { get; private set; }
+
+        public int GetOrSetCalls { get; private set; }
 
         public Task<T?> GetAsync<T>(string key, CancellationToken cancellationToken = default)
         {
             return Task.FromResult(default(T));
+        }
+
+        public async Task<T?> GetOrSetAsync<T>(
+            string key,
+            Func<CancellationToken, Task<T?>> factory,
+            TimeSpan? absoluteExpireTime = null,
+            CancellationToken cancellationToken = default)
+        {
+            GetOrSetCalls++;
+            var value = await factory(cancellationToken);
+            LastSetKey = key;
+            LastAbsoluteExpireTime = absoluteExpireTime;
+            return value;
         }
 
         public Task SetAsync<T>(
@@ -279,6 +528,7 @@ public sealed class ReviewRegressionTests
             TimeSpan? absoluteExpireTime = null,
             CancellationToken cancellationToken = default)
         {
+            LastSetKey = key;
             LastAbsoluteExpireTime = absoluteExpireTime;
             return Task.CompletedTask;
         }
@@ -291,6 +541,30 @@ public sealed class ReviewRegressionTests
         public Task RemoveByPatternAsync(string pattern, CancellationToken cancellationToken = default)
         {
             return Task.CompletedTask;
+        }
+    }
+
+    [DistributedLock("iiot:lock:missing:{MissingProperty}")]
+    private sealed record BrokenLockCommand(Guid DeviceId) : ICommand<Result<bool>>;
+
+    private sealed record DeviceScopedCommand(Guid DeviceId) : IDeviceCommand<Result<bool>>;
+
+    private sealed class NoopDistributedLockService : IDistributedLockService
+    {
+        public Task<IAsyncDisposable> AcquireAsync(
+            string resource,
+            TimeSpan? acquireTimeout = null,
+            CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult<IAsyncDisposable>(new NoopAsyncDisposable());
+        }
+    }
+
+    private sealed class NoopAsyncDisposable : IAsyncDisposable
+    {
+        public ValueTask DisposeAsync()
+        {
+            return ValueTask.CompletedTask;
         }
     }
 }

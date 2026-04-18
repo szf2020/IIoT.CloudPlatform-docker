@@ -32,7 +32,9 @@ if (app.Environment.IsDevelopment())
 
 app.UseExceptionHandler();
 app.UseSerilogRequestLogging();
+app.UseForwardedHeaders();
 app.UseAuthentication();
+app.UseRateLimiter();
 app.UseAuthorization();
 app.MapControllers();
 app.MapDefaultEndpoints();

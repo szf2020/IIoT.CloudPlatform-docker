@@ -7,6 +7,7 @@ using IIoT.Services.Common.Contracts.Identity;
 using IIoT.Services.Common.Contracts.Persistence;
 using IIoT.Services.Common.Contracts.RecordQueries;
 using IIoT.SharedKernel.Domain;
+using IIoT.SharedKernel.Paging;
 using IIoT.SharedKernel.Repository;
 using IIoT.SharedKernel.Result;
 using IIoT.SharedKernel.Specification;
@@ -114,6 +115,7 @@ internal sealed class RecordingCacheService : ICacheService
     public string? LastSetKey { get; private set; }
     public TimeSpan? LastAbsoluteExpireTime { get; private set; }
     public Dictionary<string, object?> Values { get; } = [];
+    public int GetOrSetCalls { get; private set; }
 
     public Task<T?> GetAsync<T>(string key, CancellationToken cancellationToken = default)
     {
@@ -123,6 +125,26 @@ internal sealed class RecordingCacheService : ICacheService
         }
 
         return Task.FromResult(default(T));
+    }
+
+    public async Task<T?> GetOrSetAsync<T>(
+        string key,
+        Func<CancellationToken, Task<T?>> factory,
+        TimeSpan? absoluteExpireTime = null,
+        CancellationToken cancellationToken = default)
+    {
+        GetOrSetCalls++;
+
+        if (Values.TryGetValue(key, out var value) && value is T typedValue)
+        {
+            return typedValue;
+        }
+
+        var created = await factory(cancellationToken);
+        LastSetKey = key;
+        LastAbsoluteExpireTime = absoluteExpireTime;
+        Values[key] = created;
+        return created;
     }
 
     public Task SetAsync<T>(
@@ -257,6 +279,52 @@ internal sealed class StubDeviceReadQueryService : IDeviceReadQueryService
     }
 }
 
+internal sealed class StubCapacityQueryService : ICapacityQueryService
+{
+    public List<HourlyCapacityDto> HourlyResult { get; set; } = [];
+
+    public int HourlyCalls { get; private set; }
+
+    public Task<List<HourlyCapacityDto>> GetHourlyByDeviceIdAsync(
+        Guid deviceId,
+        DateOnly date,
+        string? plcName = null,
+        CancellationToken cancellationToken = default)
+    {
+        HourlyCalls++;
+        return Task.FromResult(HourlyResult);
+    }
+
+    public Task<DailySummaryDto?> GetSummaryByDeviceIdAsync(
+        Guid deviceId,
+        DateOnly date,
+        string? plcName = null,
+        CancellationToken cancellationToken = default)
+    {
+        throw new NotSupportedException();
+    }
+
+    public Task<List<DailyRangeSummaryDto>> GetSummaryRangeAsync(
+        Guid deviceId,
+        DateOnly startDate,
+        DateOnly endDate,
+        string? plcName = null,
+        CancellationToken cancellationToken = default)
+    {
+        throw new NotSupportedException();
+    }
+
+    public Task<(List<DailyCapacityPagedItemDto> Items, int TotalCount)> GetDailyPagedAsync(
+        Pagination pagination,
+        DateOnly? date = null,
+        Guid? deviceId = null,
+        IReadOnlyCollection<Guid>? deviceIds = null,
+        CancellationToken cancellationToken = default)
+    {
+        throw new NotSupportedException();
+    }
+}
+
 internal sealed class StubRecipeReadQueryService : IRecipeReadQueryService
 {
     public bool VersionExists { get; set; }
@@ -274,17 +342,26 @@ internal sealed class StubRecipeReadQueryService : IRecipeReadQueryService
 
 internal sealed class RecordingIdentityAccountStore : IIdentityAccountStore
 {
+    public Result<IdentityAccount> CreateResult { get; set; } = Result.Success(IdentityAccount.Create(Guid.NewGuid(), "E000"));
+
     public Guid? LastSetEnabledId { get; private set; }
 
     public bool LastSetEnabledValue { get; private set; }
 
     public Result<bool> SetEnabledResult { get; set; } = Result.Success(true);
 
+    public Result<bool> DeleteResult { get; set; } = Result.Success(true);
+
+    public Result<bool> AssignRoleResult { get; set; } = Result.Success(true);
+
     public Task<Result<IdentityAccount>> CreateAsync(
         IdentityAccount account,
         CancellationToken cancellationToken = default)
     {
-        return Task.FromResult(Result.Success(account));
+        return Task.FromResult(
+            CreateResult.IsSuccess
+                ? Result.Success(account)
+                : Result.Failure(CreateResult.Errors?.ToArray() ?? ["create failed"]));
     }
 
     public Task<IdentityAccount?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
@@ -311,7 +388,7 @@ internal sealed class RecordingIdentityAccountStore : IIdentityAccountStore
 
     public Task<Result<bool>> DeleteAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        return Task.FromResult(Result.Success(true));
+        return Task.FromResult(DeleteResult);
     }
 
     public Task<Result<bool>> AssignRoleAsync(
@@ -319,12 +396,61 @@ internal sealed class RecordingIdentityAccountStore : IIdentityAccountStore
         string roleName,
         CancellationToken cancellationToken = default)
     {
-        return Task.FromResult(Result.Success(true));
+        return Task.FromResult(AssignRoleResult);
     }
 
     public Task<IList<string>> GetRolesAsync(Guid id, CancellationToken cancellationToken = default)
     {
         return Task.FromResult<IList<string>>([]);
+    }
+}
+
+internal sealed class StubIdentityPasswordService : IIdentityPasswordService
+{
+    public Result<bool> SetPasswordResult { get; set; } = Result.Success(true);
+
+    public Guid? LastChangedUserId { get; private set; }
+
+    public string? LastCurrentPassword { get; private set; }
+
+    public string? LastNewPassword { get; private set; }
+
+    public Result ChangePasswordResult { get; set; } = Result.Success();
+
+    public Task<Result<bool>> CheckPasswordAsync(
+        Guid accountId,
+        string password,
+        CancellationToken cancellationToken = default)
+    {
+        throw new NotSupportedException();
+    }
+
+    public Task<Result<bool>> SetPasswordAsync(
+        Guid accountId,
+        string newPassword,
+        CancellationToken cancellationToken = default)
+    {
+        return Task.FromResult(SetPasswordResult);
+    }
+
+    public Task<Result> ChangePasswordAsync(
+        Guid accountId,
+        string currentPassword,
+        string newPassword,
+        CancellationToken cancellationToken = default)
+    {
+        LastChangedUserId = accountId;
+        LastCurrentPassword = currentPassword;
+        LastNewPassword = newPassword;
+        return Task.FromResult(ChangePasswordResult);
+    }
+
+    public Task<Result<bool>> ResetPasswordAsync(
+        Guid accountId,
+        string newPassword,
+        CancellationToken cancellationToken = default)
+    {
+        throw new NotSupportedException();
     }
 }
 
@@ -363,6 +489,8 @@ internal sealed class TestCurrentUser : ICurrentUser
 
     public string? Role { get; init; }
 
+    public Guid? DeviceId { get; init; }
+
     public bool IsAuthenticated { get; init; }
 }
 
@@ -376,6 +504,81 @@ internal sealed class StubDevicePermissionService : IDevicePermissionService
         CancellationToken cancellationToken = default)
     {
         return Task.FromResult(AccessibleDeviceIds);
+    }
+}
+
+internal sealed class StubRolePolicyService : IRolePolicyService
+{
+    public IList<string> Roles { get; set; } = [];
+
+    public bool RoleExists { get; set; }
+
+    public Result CreateRoleResult { get; set; } = Result.Success();
+
+    public Result DeleteRoleResult { get; set; } = Result.Success();
+
+    public Result<bool> UpdateRolePermissionsResult { get; set; } = Result.Success(true);
+
+    public string? DeletedRoleName { get; private set; }
+
+    public Task<IList<string>> GetAllRolesAsync()
+    {
+        return Task.FromResult(Roles);
+    }
+
+    public Task<bool> RoleExistsAsync(string roleName)
+    {
+        return Task.FromResult(RoleExists);
+    }
+
+    public Task<Result> CreateRoleAsync(string roleName)
+    {
+        return Task.FromResult(CreateRoleResult);
+    }
+
+    public Task<Result> DeleteRoleAsync(string roleName)
+    {
+        DeletedRoleName = roleName;
+        return Task.FromResult(DeleteRoleResult);
+    }
+
+    public Task<Result> RemoveRoleFromUserAsync(string employeeNo, string roleName)
+    {
+        return Task.FromResult(Result.Success());
+    }
+
+    public Task<List<string>?> GetRolePermissionsAsync(string roleName)
+    {
+        return Task.FromResult<List<string>?>([]);
+    }
+
+    public Task<Result<bool>> UpdateRolePermissionsAsync(string roleName, List<string> permissions)
+    {
+        return Task.FromResult(UpdateRolePermissionsResult);
+    }
+
+    public Task<Result<bool>> UpdateUserPersonalPermissionsAsync(Guid userId, List<string> permissions)
+    {
+        return Task.FromResult(Result.Success(true));
+    }
+
+    public Task<List<string>> GetUserPersonalPermissionsAsync(Guid userId)
+    {
+        return Task.FromResult<List<string>>([]);
+    }
+}
+
+internal sealed class RecordingEventPublisher : IEventPublisher
+{
+    public object? LastPublishedEvent { get; private set; }
+
+    public Task PublishAsync<TEvent>(
+        TEvent @event,
+        CancellationToken cancellationToken = default)
+        where TEvent : class
+    {
+        LastPublishedEvent = @event;
+        return Task.CompletedTask;
     }
 }
 

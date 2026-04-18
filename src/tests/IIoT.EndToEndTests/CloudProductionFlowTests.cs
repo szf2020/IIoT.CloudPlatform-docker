@@ -1,9 +1,11 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.IdentityModel.Tokens.Jwt;
 using System.Text.Json;
 using FluentAssertions;
 using IIoT.Services.Common.Events.DeviceLogs;
 using MassTransit;
+using Npgsql;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Exceptions;
 using Xunit;
@@ -17,6 +19,7 @@ public sealed class CloudProductionFlowTests : IAsyncLifetime
     private static readonly TimeSpan EventuallyInterval = TimeSpan.FromMilliseconds(500);
 
     private readonly IIoTAppFixture _fixture = new();
+    private readonly Dictionary<Guid, string> _deviceCodes = new();
 
     public Task InitializeAsync() => _fixture.StartAsync();
 
@@ -28,6 +31,7 @@ public sealed class CloudProductionFlowTests : IAsyncLifetime
         await AuthenticateAsAdminAsync();
 
         var deviceId = await CreateTestDeviceAsync("log");
+        await AuthenticateAsEdgeAsync(deviceId);
         var logTime = DateTime.SpecifyKind(DateTime.UtcNow.AddMinutes(-2), DateTimeKind.Utc);
         var message = $"device-log-{Guid.NewGuid():N}";
 
@@ -48,6 +52,8 @@ public sealed class CloudProductionFlowTests : IAsyncLifetime
         await PostJsonAsync("/api/v1/edge/device-logs", request);
         await PostJsonAsync("/api/v1/edge/device-logs", request);
 
+        await AuthenticateAsAdminAsync();
+
         var result = await EventuallyAsync(async () =>
             await GetFromJsonAsync<PagedResponse<DeviceLogListItemDto>>(
                 $"/api/v1/human/device-logs/by-time-range?PageNumber=1&PageSize=20&deviceId={deviceId}" +
@@ -64,6 +70,7 @@ public sealed class CloudProductionFlowTests : IAsyncLifetime
         await AuthenticateAsAdminAsync();
 
         var deviceId = await CreateTestDeviceAsync("capacity");
+        await AuthenticateAsEdgeAsync(deviceId);
         var date = DateOnly.FromDateTime(DateTime.UtcNow);
         var plcName = $"PLC-{Guid.NewGuid():N}"[..10];
 
@@ -98,6 +105,8 @@ public sealed class CloudProductionFlowTests : IAsyncLifetime
         await PostJsonAsync("/api/v1/edge/capacity/hourly", first);
         await PostJsonAsync("/api/v1/edge/capacity/hourly", second);
 
+        await AuthenticateAsAdminAsync();
+
         var result = await EventuallyAsync(async () =>
             await GetFromJsonAsync<List<HourlyCapacityDto>>(
                 $"/api/v1/human/capacity/hourly?deviceId={deviceId}&date={date:yyyy-MM-dd}&plcName={Uri.EscapeDataString(plcName)}"),
@@ -115,6 +124,7 @@ public sealed class CloudProductionFlowTests : IAsyncLifetime
         await AuthenticateAsAdminAsync();
 
         var deviceId = await CreateTestDeviceAsync("pass");
+        await AuthenticateAsEdgeAsync(deviceId);
         var completedTime = DateTime.SpecifyKind(DateTime.UtcNow.AddMinutes(-3), DateTimeKind.Utc);
         var barcode = $"BC-{Guid.NewGuid():N}"[..14];
 
@@ -140,6 +150,8 @@ public sealed class CloudProductionFlowTests : IAsyncLifetime
         await PostJsonAsync("/api/v1/edge/pass-stations/injection/batch", request);
         await PostJsonAsync("/api/v1/edge/pass-stations/injection/batch", request);
 
+        await AuthenticateAsAdminAsync();
+
         var result = await EventuallyAsync(async () =>
             await GetFromJsonAsync<PagedResponse<InjectionPassListItemDto>>(
                 $"/api/v1/human/pass-stations/injection/by-device-time?PageNumber=1&PageSize=20&deviceId={deviceId}" +
@@ -148,6 +160,46 @@ public sealed class CloudProductionFlowTests : IAsyncLifetime
             response => response.Items.Count(x => x.Barcode == barcode) == 1);
 
         result.Items.Should().ContainSingle(x => x.Barcode == barcode);
+    }
+
+    [Fact]
+    public async Task PassDataStacking_DuplicateConsume_ShouldPersistOneRow()
+    {
+        await AuthenticateAsAdminAsync();
+
+        var deviceId = await CreateTestDeviceAsync("stacking-pass");
+        await AuthenticateAsEdgeAsync(deviceId);
+        var connectionString = await _fixture.GetConnectionStringAsync("iiot-db");
+        var completedTime = DateTime.SpecifyKind(DateTime.UtcNow.AddMinutes(-4), DateTimeKind.Utc);
+        var barcode = $"ST-{Guid.NewGuid():N}"[..14];
+
+        var request = new
+        {
+            DeviceId = deviceId,
+            Item = new
+            {
+                Barcode = barcode,
+                TrayCode = "TRAY-STACK-01",
+                LayerCount = 16,
+                SequenceNo = 9,
+                CellResult = "OK",
+                CompletedTime = completedTime
+            }
+        };
+
+        await PostJsonAsync("/api/v1/edge/pass-stations/stacking", request);
+        await PostJsonAsync("/api/v1/edge/pass-stations/stacking", request);
+
+        var rows = await EventuallyAsync(
+            async () => await GetStackingPassRowsAsync(connectionString, deviceId, barcode),
+            response => response.Count == 1);
+
+        rows.Should().ContainSingle();
+        rows[0].TrayCode.Should().Be("TRAY-STACK-01");
+        rows[0].LayerCount.Should().Be(16);
+        rows[0].SequenceNo.Should().Be(9);
+        rows[0].CellResult.Should().Be("OK");
+        rows[0].CompletedTime.ToUniversalTime().Should().BeCloseTo(completedTime, TimeSpan.FromMilliseconds(1));
     }
 
     [Fact]
@@ -219,9 +271,12 @@ public sealed class CloudProductionFlowTests : IAsyncLifetime
         var device = await CreateTestDeviceRegistrationAsync("bootstrap");
         _fixture.ClearAuthToken();
 
-        var edge = await GetFromJsonAsync<DeviceIdentityDto>(
+        var edge = await GetFromJsonAsync<EdgeBootstrapDto>(
             $"/api/v1/edge/bootstrap/device-instance?clientCode={Uri.EscapeDataString(device.Code)}");
         edge.Id.Should().Be(device.DeviceId);
+        edge.ClientCode.Should().Be(device.Code);
+        edge.UploadAccessToken.Should().NotBeNullOrWhiteSpace();
+        edge.UploadAccessTokenExpiresAtUtc.Should().BeAfter(DateTimeOffset.UtcNow);
     }
 
     [Fact]
@@ -253,7 +308,7 @@ public sealed class CloudProductionFlowTests : IAsyncLifetime
             unauthorized.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
         }
 
-        await AuthenticateAsAdminAsync();
+        await AuthenticateAsEdgeAsync(device.DeviceId);
 
         await PostJsonAsync("/api/v1/edge/capacity/hourly", request);
 
@@ -291,7 +346,7 @@ public sealed class CloudProductionFlowTests : IAsyncLifetime
             unauthorized.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
         }
 
-        await AuthenticateAsAdminAsync();
+        await AuthenticateAsEdgeAsync(device.DeviceId);
 
         var recipes = await EventuallyAsync(
             async () => await GetFromJsonAsync<List<RecipeForDeviceDto>>($"/api/v1/edge/recipes/device/{device.DeviceId}"),
@@ -306,6 +361,7 @@ public sealed class CloudProductionFlowTests : IAsyncLifetime
         await AuthenticateAsAdminAsync();
 
         var deviceId = await CreateTestDeviceAsync("human-capacity");
+        await AuthenticateAsEdgeAsync(deviceId);
         var date = DateOnly.FromDateTime(DateTime.UtcNow);
         var plcName = $"PLC-{Guid.NewGuid():N}"[..10];
 
@@ -322,6 +378,8 @@ public sealed class CloudProductionFlowTests : IAsyncLifetime
             NgCount = 2,
             PlcName = plcName
         });
+
+        await AuthenticateAsAdminAsync();
 
         var humanHourly = await EventuallyAsync(
             async () => await GetFromJsonAsync<List<HourlyCapacityDto>>(
@@ -393,10 +451,27 @@ public sealed class CloudProductionFlowTests : IAsyncLifetime
         {
             passStationUnauthorized.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
         }
+
+        using (var stackingUnauthorized = await _fixture.HttpClient.PostAsJsonAsync("/api/v1/edge/pass-stations/stacking", new
+               {
+                   DeviceId = device.DeviceId,
+                   Item = new
+                   {
+                       Barcode = $"ST-{Guid.NewGuid():N}"[..14],
+                       TrayCode = "TRAY-EDGE-01",
+                       LayerCount = 8,
+                       SequenceNo = 3,
+                       CellResult = "Unknown",
+                       CompletedTime = completedTime
+                   }
+               }))
+        {
+            stackingUnauthorized.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+        }
     }
 
     [Fact]
-    public async Task HumanIdentity_EdgeLogin_NewRoute_ShouldReturnJwt()
+    public async Task HumanIdentity_EdgeLogin_ShouldReturnHumanJwt_ThatCannotAccessEdgeRoutes()
     {
         await AuthenticateAsAdminAsync();
 
@@ -413,6 +488,27 @@ public sealed class CloudProductionFlowTests : IAsyncLifetime
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var token = await ReadJwtTokenAsync(response);
         token.Should().NotBeNullOrWhiteSpace();
+
+        var jwt = new JwtSecurityTokenHandler().ReadJwtToken(token);
+        jwt.Claims.Should().Contain(claim => claim.Type == "actor_type" && claim.Value == "human-user");
+        jwt.Claims.Should().NotContain(claim => claim.Type == "device_id");
+
+        _fixture.SetAuthToken(token!);
+        using var edgeResponse = await _fixture.HttpClient.PostAsJsonAsync("/api/v1/edge/device-logs", new
+        {
+            DeviceId = device.DeviceId,
+            Logs = new[]
+            {
+                new
+                {
+                    Level = "INFO",
+                    Message = $"human-jwt-{Guid.NewGuid():N}",
+                    LogTime = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Utc)
+                }
+            }
+        });
+
+        edgeResponse.StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
 
     private async Task AuthenticateAsAdminAsync()
@@ -431,6 +527,19 @@ public sealed class CloudProductionFlowTests : IAsyncLifetime
         _fixture.SetAuthToken(token!);
     }
 
+    private async Task AuthenticateAsEdgeAsync(Guid deviceId)
+    {
+        _fixture.ClearAuthToken();
+
+        _deviceCodes.TryGetValue(deviceId, out var code).Should().BeTrue($"device code for {deviceId} should be tracked during test setup");
+        var bootstrap = await GetFromJsonAsync<EdgeBootstrapDto>(
+            $"/api/v1/edge/bootstrap/device-instance?clientCode={Uri.EscapeDataString(code!)}");
+
+        bootstrap.Id.Should().Be(deviceId);
+        bootstrap.UploadAccessToken.Should().NotBeNullOrWhiteSpace();
+        _fixture.SetAuthToken(bootstrap.UploadAccessToken);
+    }
+
     private static async Task<string> ReadJwtTokenAsync(HttpResponseMessage response)
     {
         var body = await response.Content.ReadAsStringAsync();
@@ -444,7 +553,7 @@ public sealed class CloudProductionFlowTests : IAsyncLifetime
         }
         catch (JsonException)
         {
-            // Some hosts return JWTs as text/plain instead of a JSON string.
+        // 部分宿主会直接返回 text/plain 的 JWT，而不是 JSON 字符串。
         }
 
         return body.Trim();
@@ -470,6 +579,7 @@ public sealed class CloudProductionFlowTests : IAsyncLifetime
         created.Id.Should().NotBe(Guid.Empty);
         created.Code.Should().StartWith("DEV-");
         created.Code.Should().NotBeNullOrWhiteSpace();
+        _deviceCodes[created.Id] = created.Code;
 
         return new TestDeviceRegistration(created.Id, processId, created.Code);
     }
@@ -600,6 +710,40 @@ public sealed class CloudProductionFlowTests : IAsyncLifetime
 
         throw new TimeoutException("Condition was not satisfied before timeout.");
     }
+
+    private static async Task<List<StackingPassRow>> GetStackingPassRowsAsync(
+        string connectionString,
+        Guid deviceId,
+        string barcode)
+    {
+        await using var connection = new NpgsqlConnection(connectionString);
+        await connection.OpenAsync();
+
+        await using var command = new NpgsqlCommand(
+            """
+            select tray_code, layer_count, sequence_no, cell_result, completed_time
+            from pass_data_stacking
+            where device_id = @deviceId and barcode = @barcode
+            order by completed_time desc
+            """,
+            connection);
+        command.Parameters.AddWithValue("deviceId", deviceId);
+        command.Parameters.AddWithValue("barcode", barcode);
+
+        var rows = new List<StackingPassRow>();
+        await using var reader = await command.ExecuteReaderAsync();
+        while (await reader.ReadAsync())
+        {
+            rows.Add(new StackingPassRow(
+                TrayCode: reader.GetString(0),
+                LayerCount: reader.GetInt32(1),
+                SequenceNo: reader.GetInt32(2),
+                CellResult: reader.GetString(3),
+                CompletedTime: reader.GetDateTime(4)));
+        }
+
+        return rows;
+    }
 }
 
 public sealed record PagedResponse<T>
@@ -670,14 +814,24 @@ public sealed record InjectionPassListItemDto(
     DateTime CompletedTime,
     DateTime ReceivedAt);
 
+public sealed record StackingPassRow(
+    string TrayCode,
+    int LayerCount,
+    int SequenceNo,
+    string CellResult,
+    DateTime CompletedTime);
+
 public sealed record PermissionGroupDto(
     string GroupName,
     List<string> Permissions);
 
-public sealed record DeviceIdentityDto(
+public sealed record EdgeBootstrapDto(
     Guid Id,
     string DeviceName,
-    Guid ProcessId);
+    string ClientCode,
+    Guid ProcessId,
+    string UploadAccessToken,
+    DateTimeOffset UploadAccessTokenExpiresAtUtc);
 
 public sealed record CreateDeviceResultDto(
     Guid Id,

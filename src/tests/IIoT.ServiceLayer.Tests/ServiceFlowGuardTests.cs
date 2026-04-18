@@ -1,16 +1,22 @@
+using AutoMapper;
 using IIoT.Core.Employees.Aggregates.Employees;
 using IIoT.Core.MasterData.Aggregates.MfgProcesses;
 using IIoT.Core.Production.Aggregates.Devices;
 using IIoT.Core.Production.Aggregates.Recipes;
 using IIoT.ProductionService.Commands.Capacities;
+using IIoT.ProductionService.Profiles;
 using IIoT.EmployeeService.Commands.Employees;
 using IIoT.MasterDataService.Commands.Processes;
 using IIoT.ProductionService.Commands.Devices;
 using IIoT.ProductionService.Commands.Recipes;
+using IIoT.ProductionService.Queries.Capacities;
 using IIoT.ProductionService.Queries.Devices;
 using IIoT.Services.Common.Events.Capacities;
 using IIoT.Services.Common.Caching;
+using IIoT.Services.Common.Contracts.Authorization;
+using IIoT.Services.Common.Contracts.RecordQueries;
 using IIoT.SharedKernel.Specification;
+using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 
 namespace IIoT.ServiceLayer.Tests;
@@ -97,7 +103,7 @@ public sealed class ServiceFlowGuardTests
             new TestCurrentUser
             {
                 Id = Guid.NewGuid().ToString(),
-                Role = "Admin",
+                Role = SystemRoles.Admin,
                 UserName = "admin",
                 IsAuthenticated = true
             },
@@ -151,6 +157,82 @@ public sealed class ServiceFlowGuardTests
     }
 
     [Fact]
+    public async Task OnboardEmployeeHandler_ShouldRollbackWhenRoleAssignmentFails()
+    {
+        var repository = new InMemoryRepository<Employee>();
+        var identityStore = new RecordingIdentityAccountStore
+        {
+            AssignRoleResult = IIoT.SharedKernel.Result.Result.Failure("role failed")
+        };
+        var passwordService = new StubIdentityPasswordService();
+        var unitOfWork = new RecordingUnitOfWork();
+        var handler = new OnboardEmployeeHandler(
+            identityStore,
+            passwordService,
+            repository,
+            unitOfWork);
+
+        var result = await handler.Handle(
+            new OnboardEmployeeCommand("E1003", "Operator", "Password123!", "Supervisor"),
+            CancellationToken.None);
+
+        Assert.False(result.IsSuccess);
+        Assert.Null(repository.AddedEntity);
+        Assert.Equal(1, unitOfWork.BeginCalls);
+        Assert.Equal(0, unitOfWork.CommitCalls);
+        Assert.Equal(1, unitOfWork.RollbackCalls);
+    }
+
+    [Fact]
+    public async Task DeactivateEmployeeHandler_ShouldRollbackWhenIdentityDisableFails()
+    {
+        var employeeId = Guid.NewGuid();
+        var employee = new Employee(employeeId, "E1004", "Rollback User");
+        var repository = new InMemoryRepository<Employee>
+        {
+            SingleOrDefaultResult = employee
+        };
+        var identityStore = new RecordingIdentityAccountStore
+        {
+            SetEnabledResult = IIoT.SharedKernel.Result.Result.Failure("disable failed")
+        };
+        var unitOfWork = new RecordingUnitOfWork();
+        var cache = new RecordingCacheService();
+        var handler = new DeactivateEmployeeHandler(repository, identityStore, unitOfWork, cache);
+
+        var result = await handler.Handle(new DeactivateEmployeeCommand(employeeId), CancellationToken.None);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal(1, unitOfWork.BeginCalls);
+        Assert.Equal(0, unitOfWork.CommitCalls);
+        Assert.Equal(1, unitOfWork.RollbackCalls);
+    }
+
+    [Fact]
+    public async Task TerminateEmployeeHandler_ShouldRollbackWhenIdentityDeleteFails()
+    {
+        var employeeId = Guid.NewGuid();
+        var employee = new Employee(employeeId, "E1005", "Terminate User");
+        var repository = new InMemoryRepository<Employee>
+        {
+            SingleOrDefaultResult = employee
+        };
+        var identityStore = new RecordingIdentityAccountStore
+        {
+            DeleteResult = IIoT.SharedKernel.Result.Result.Failure("delete failed")
+        };
+        var unitOfWork = new RecordingUnitOfWork();
+        var handler = new TerminateEmployeeHandler(repository, identityStore, unitOfWork);
+
+        var result = await handler.Handle(new TerminateEmployeeCommand(employeeId), CancellationToken.None);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal(1, unitOfWork.BeginCalls);
+        Assert.Equal(0, unitOfWork.CommitCalls);
+        Assert.Equal(1, unitOfWork.RollbackCalls);
+    }
+
+    [Fact]
     public async Task UpdateEmployeeAccessHandler_ShouldClearDeviceAccessCacheWhenAccessChanges()
     {
         var employeeId = Guid.NewGuid();
@@ -188,7 +270,7 @@ public sealed class ServiceFlowGuardTests
             new TestCurrentUser
             {
                 Id = Guid.NewGuid().ToString(),
-                Role = "Admin",
+                Role = SystemRoles.Admin,
                 UserName = "admin",
                 IsAuthenticated = true
             },
@@ -219,7 +301,7 @@ public sealed class ServiceFlowGuardTests
             new TestCurrentUser
             {
                 Id = Guid.NewGuid().ToString(),
-                Role = "Admin",
+                Role = SystemRoles.Admin,
                 UserName = "admin",
                 IsAuthenticated = true
             },
@@ -241,6 +323,7 @@ public sealed class ServiceFlowGuardTests
     public async Task PersistHourlyCapacityHandler_ShouldUpsertRecordAndClearCapacityCaches()
     {
         var deviceId = Guid.NewGuid();
+        var reportedAt = DateTime.SpecifyKind(DateTime.UtcNow.AddSeconds(-5), DateTimeKind.Utc);
         var repository = new RecordingHourlyCapacityRecordRepository();
         var cache = new RecordingCacheService();
         var handler = new PersistHourlyCapacityHandler(
@@ -261,17 +344,125 @@ public sealed class ServiceFlowGuardTests
                     TotalCount = 16,
                     OkCount = 15,
                     NgCount = 1,
-                    PlcName = "PLC-01"
+                    PlcName = "PLC-01",
+                    ReceivedAtUtc = reportedAt
                 }),
             CancellationToken.None);
 
         Assert.True(result.IsSuccess);
         Assert.NotNull(repository.LastUpsert);
         Assert.Equal(deviceId, repository.LastUpsert!.DeviceId);
+        Assert.Equal(reportedAt, repository.LastUpsert.ReportedAt);
+        Assert.Contains(
+            CacheKeys.CapacityHourly(repository.LastUpsert.DeviceId, repository.LastUpsert.Date, repository.LastUpsert.PlcName),
+            cache.RemovedKeys);
+        Assert.Contains(
+            CacheKeys.CapacitySummary(repository.LastUpsert.DeviceId, repository.LastUpsert.Date, repository.LastUpsert.PlcName),
+            cache.RemovedKeys);
+        Assert.Contains(
+            CacheKeys.CapacityRange(repository.LastUpsert.DeviceId, repository.LastUpsert.Date, repository.LastUpsert.Date, repository.LastUpsert.PlcName),
+            cache.RemovedKeys);
         Assert.Contains(CacheKeys.CapacityHourlyPattern(deviceId), cache.RemovedPatterns);
         Assert.Contains(CacheKeys.CapacitySummaryPattern(deviceId), cache.RemovedPatterns);
         Assert.Contains(CacheKeys.CapacityRangePattern(deviceId), cache.RemovedPatterns);
         Assert.Contains(CacheKeys.CapacityPagedByDevicePattern(deviceId), cache.RemovedPatterns);
+    }
+
+    [Fact]
+    public async Task ReceiveHourlyCapacityHandler_ShouldClearCapacityCachesBeforePublishing()
+    {
+        var deviceId = Guid.NewGuid();
+        var cache = new RecordingCacheService();
+        var publisher = new RecordingEventPublisher();
+        var mapperServices = new ServiceCollection();
+        mapperServices.AddLogging();
+        mapperServices.AddAutoMapper(cfg => { cfg.AddProfile<ProductionProfile>(); });
+        var mapper = mapperServices.BuildServiceProvider().GetRequiredService<IMapper>();
+        var handler = new ReceiveHourlyCapacityHandler(
+            new StubDeviceIdentityQueryService { Exists = true },
+            mapper,
+            publisher,
+            cache);
+
+        var request = new ReceiveHourlyCapacityCommand(
+            deviceId,
+            DateOnly.FromDateTime(DateTime.UtcNow),
+            "D",
+            9,
+            30,
+            "09:30",
+            16,
+            15,
+            1,
+            "PLC-01");
+
+        var result = await handler.Handle(request, CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        var published = Assert.IsType<HourlyCapacityReceivedEvent>(publisher.LastPublishedEvent);
+        Assert.Equal(deviceId, published.DeviceId);
+        Assert.True(published.ReceivedAtUtc > DateTime.UtcNow.AddMinutes(-1));
+        Assert.Equal(DateTimeKind.Utc, published.ReceivedAtUtc.Kind);
+        Assert.Contains(CacheKeys.CapacityHourly(deviceId, request.Date, request.PlcName), cache.RemovedKeys);
+        Assert.Contains(CacheKeys.CapacitySummary(deviceId, request.Date, request.PlcName), cache.RemovedKeys);
+        Assert.Contains(CacheKeys.CapacityRange(deviceId, request.Date, request.Date, request.PlcName), cache.RemovedKeys);
+        Assert.Contains(CacheKeys.CapacityHourlyPattern(deviceId), cache.RemovedPatterns);
+        Assert.Contains(CacheKeys.CapacitySummaryPattern(deviceId), cache.RemovedPatterns);
+        Assert.Contains(CacheKeys.CapacityRangePattern(deviceId), cache.RemovedPatterns);
+        Assert.Contains(CacheKeys.CapacityPagedByDevicePattern(deviceId), cache.RemovedPatterns);
+    }
+
+    [Fact]
+    public async Task GetHourlyByDeviceIdHandler_ShouldBypassCacheForFreshReads()
+    {
+        var deviceId = Guid.NewGuid();
+        var date = DateOnly.FromDateTime(DateTime.UtcNow);
+        var queryService = new StubCapacityQueryService
+        {
+            HourlyResult =
+            [
+                new HourlyCapacityDto(9, 30, "09:30", "D", 16, 15, 1)
+            ]
+        };
+        var handler = new GetHourlyByDeviceIdHandler(
+            new TestCurrentUser
+            {
+                Id = Guid.NewGuid().ToString(),
+                Role = SystemRoles.Admin,
+                UserName = "admin",
+                IsAuthenticated = true
+            },
+            new StubDevicePermissionService(),
+            queryService);
+
+        var first = await handler.Handle(new GetHourlyByDeviceIdQuery(deviceId, date, "PLC-01"), CancellationToken.None);
+        var second = await handler.Handle(new GetHourlyByDeviceIdQuery(deviceId, date, "PLC-01"), CancellationToken.None);
+
+        Assert.True(first.IsSuccess);
+        Assert.True(second.IsSuccess);
+        Assert.Equal(2, queryService.HourlyCalls);
+    }
+
+    [Fact]
+    public async Task GetEdgeHourlyByDeviceIdHandler_ShouldBypassCacheForFreshReads()
+    {
+        var deviceId = Guid.NewGuid();
+        var date = DateOnly.FromDateTime(DateTime.UtcNow);
+        var queryService = new StubCapacityQueryService
+        {
+            HourlyResult =
+            [
+                new HourlyCapacityDto(9, 30, "09:30", "D", 16, 15, 1)
+            ]
+        };
+        var handler = new GetEdgeHourlyByDeviceIdHandler(queryService);
+
+        var first = await handler.Handle(new GetEdgeHourlyByDeviceIdQuery(deviceId, date, "PLC-01"), CancellationToken.None);
+        var second = await handler.Handle(new GetEdgeHourlyByDeviceIdQuery(deviceId, date, "PLC-01"), CancellationToken.None);
+
+        Assert.True(first.IsSuccess);
+        Assert.True(second.IsSuccess);
+        Assert.Equal(2, queryService.HourlyCalls);
     }
 
     [Fact]
